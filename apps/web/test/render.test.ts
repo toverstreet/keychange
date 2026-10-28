@@ -3,7 +3,7 @@ import { DEFAULT_PARAMS, TONE_PRESETS, type Params } from '@keypitch/contract'
 import { OfflineAudioContext } from 'node-web-audio-api'
 import { renderToBuffer, exportFilename } from '../lib/audio/render'
 import { encodeWav } from '../lib/audio/wav'
-import { buildEffectChain } from '../lib/audio/effect-chain'
+import { applyParams, buildEffectChain } from '../lib/audio/effect-chain'
 import { stretchChannels } from '../lib/audio/stretch'
 import { bufferFrom, makeOfflineContext, SR } from './helpers/offline'
 import { bandLevelDb, dominantFreq, rms, sine, whiteNoise } from './helpers/dsp'
@@ -72,16 +72,21 @@ describe('renderToBuffer', () => {
   })
 })
 
-describe('export parity: the offline render must equal the live graph', () => {
+describe('export parity: the offline render must equal what the live engine plays', () => {
   /**
-   * The live engine plays the stretched buffer through buildEffectChain on an
-   * AudioContext; renderToBuffer runs the same stretched buffer through
-   * buildEffectChain on an OfflineAudioContext. This reconstructs the live
-   * arrangement explicitly and compares band by band, so a future change that
-   * makes one path diverge from the other fails here rather than shipping as a
-   * "the download sounds different" bug.
+   * The live engine stretches the source, then plays the stretched buffer
+   * through `buildEffectChain` + `applyParams` on its context. This builds the
+   * graph the same way the engine does -- including `applyParams`, which the
+   * engine uses for every effects change -- and compares band by band against
+   * `renderToBuffer`.
+   *
+   * It is not a perfect stand-in for the engine (that would need a running
+   * audio clock), but it exercises the same chain-construction and
+   * parameter-application code paths, so a change that makes one diverge from
+   * the other fails here rather than shipping as "the download sounds
+   * different".
    */
-  async function renderLiveEquivalent(data: Float32Array[], params: Params): Promise<AudioBuffer> {
+  async function renderAsEngineWould(data: Float32Array[], params: Params): Promise<AudioBuffer> {
     const stretched = stretchChannels(
       data.map((d) => d.slice()),
       SR,
@@ -93,7 +98,10 @@ describe('export parity: the offline render must equal the live graph', () => {
     stretched.forEach((d, ch) => buf.copyToChannel(d as Float32Array<ArrayBuffer>, ch))
     const src = ctx.createBufferSource()
     src.buffer = buf
-    const chain = buildEffectChain(ctx, params, { durationSec: frames / SR, startTime: 0 })
+
+    const opts = { durationSec: frames / SR, startTime: 0, phaseOffsetSec: 0 }
+    const chain = buildEffectChain(ctx, params, opts)
+    applyParams(chain, params, opts) // the engine always does this on start
     src.connect(chain.input)
     chain.output.connect(ctx.destination)
     src.start(0)
@@ -105,25 +113,48 @@ describe('export parity: the offline render must equal the live graph', () => {
     const noise = whiteNoise(2, SR)
     const src = sourceBuffer([noise, noise])
 
-    const live = await renderLiveEquivalent([noise, noise], params)
+    const live = await renderAsEngineWould([noise, noise], params)
     const offline = await renderToBuffer(src, params, undefined, factory)
 
-    expect(offline.length).toBe(live.length)
+    // The offline render is longer by the reverb tail it is allowed to ring
+    // out; compare over the material itself.
+    expect(offline.length).toBeGreaterThanOrEqual(live.length)
+    const common = Math.min(offline.length, live.length)
+    const a = offline.getChannelData(0).subarray(0, common)
+    const b = live.getChannelData(0).subarray(0, common)
     for (const f of [125, 500, 2000, 8000]) {
-      const a = bandLevelDb(offline.getChannelData(0), f, SR)
-      const b = bandLevelDb(live.getChannelData(0), f, SR)
-      expect(Math.abs(a - b), `band ${f} Hz`).toBeLessThan(0.5)
+      expect(Math.abs(bandLevelDb(a, f, SR) - bandLevelDb(b, f, SR)), `band ${f} Hz`).toBeLessThan(0.5)
     }
+  })
+
+  it('matches exactly in length when there is no reverb tail to ring out', async () => {
+    const params = p({ pitchSemitones: 2, speed: 0.9, reverbMix: 0 })
+    const noise = whiteNoise(1, SR)
+    const live = await renderAsEngineWould([noise, noise], params)
+    const offline = await renderToBuffer(sourceBuffer([noise, noise]), params, undefined, factory)
+    expect(offline.length).toBe(live.length)
   })
 
   it('matches with 8D engaged, where automation could most easily diverge', async () => {
     const params = p({ eightD: true, speed: 1 })
     const noise = whiteNoise(3, SR)
-    const src = sourceBuffer([noise, noise])
-    const live = await renderLiveEquivalent([noise, noise], params)
-    const offline = await renderToBuffer(src, params, undefined, factory)
-    expect(rms(offline.getChannelData(0))).toBeCloseTo(rms(live.getChannelData(0)), 3)
-    expect(rms(offline.getChannelData(1))).toBeCloseTo(rms(live.getChannelData(1)), 3)
+    const live = await renderAsEngineWould([noise, noise], params)
+    const offline = await renderToBuffer(sourceBuffer([noise, noise]), params, undefined, factory)
+    const common = Math.min(offline.length, live.length)
+    expect(rms(offline.getChannelData(0).subarray(0, common))).toBeCloseTo(
+      rms(live.getChannelData(0).subarray(0, common)), 3)
+    expect(rms(offline.getChannelData(1).subarray(0, common))).toBeCloseTo(
+      rms(live.getChannelData(1).subarray(0, common)), 3)
+  })
+
+  it('lets the reverb tail decay instead of cutting it off at the last frame', async () => {
+    const params = p({ reverbMix: 0.8, speed: 1 })
+    const click = new Float32Array(SR)
+    click[SR - 100] = 1 // an impulse right at the end of the material
+    const offline = await renderToBuffer(sourceBuffer([click, click]), params, undefined, factory)
+    // There must be rendered audio after the source ends, carrying the tail.
+    expect(offline.length).toBeGreaterThan(SR)
+    expect(rms(offline.getChannelData(0).subarray(SR))).toBeGreaterThan(1e-5)
   })
 })
 

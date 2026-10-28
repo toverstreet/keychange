@@ -27,7 +27,7 @@ panels degrade, and they say so inline.
 ## Tests
 
 ```bash
-npm test                                   # 96 tests across the web app and contract
+npm test                                   # 143 tests across the web app and contract
 cd services/worker && uv run pytest        # 30 tests
 ```
 
@@ -72,6 +72,23 @@ against beat index held within 0.1% at every tempo tested.
 inverted on noise: white noise scored a *higher* margin (0.262) than a clear C major
 triad (0.077). A low-confidence key is shown qualified rather than asserted.
 
+**Decode at the file's own rate, never the device's.** `decodeAudioData` resamples to the
+decoding context's rate, and a bare `new AudioContext()` adopts the *output device's* rate —
+so a 48 kHz file on a 44.1 kHz output decodes to 44.1 kHz, and every "preserve the source
+rate" guarantee downstream then faithfully preserves the wrong rate. `lib/audio/sniff.ts`
+reads the rate from the container header first, and the decode happens in a context created
+at it. When the rate genuinely can't be determined the UI says "resampled by the browser"
+rather than claiming otherwise.
+
+**The effect chain is built once and mutated.** Rebuilding it per parameter change restarts
+the source node ~60 times a second while a slider is dragged — audible stuttering — and leaks
+every previous chain, because Web Audio retains nodes still connected toward the destination.
+`engine.chainBuilds` exists so a test can assert this.
+
+**Re-anchor before changing speed.** Position is tracked in source seconds against an anchor;
+adopting a new speed without re-anchoring reinterprets already-played time at the new rate and
+jumps the playhead. See `lib/audio/clock.ts`, which is pure so it can be tested exhaustively.
+
 **Don't pass `segment` to Demucs.** `htdemucs` is a transformer with a fixed training
 length of 343,980 samples; overriding the segment fails inside the model. Memory is
 bounded by its own overlapped splitting.
@@ -90,6 +107,7 @@ the source rate is not preserved, and the UI says so.
 | Export, pitched down a whole step at 0.85× | 17.7 s, 599.2 s out of an expected 599.2 s, 48 kHz preserved |
 | Exported file re-analysed | **G major, 98.0 Hz** — exactly a whole step below the source |
 | Separation | 48 s for the full track on MPS, 10.6× realtime |
+| 44.1 kHz file on a 48 kHz output device | decodes and exports at 44.1 kHz; the pre-fix path decoded it at 48 kHz |
 | 4-bar loop | 7.0 s against 7.1 s expected at 135.3 BPM |
 
 ## Not included

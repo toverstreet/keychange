@@ -3,6 +3,10 @@ import { buildEffectChain } from './effect-chain'
 import { stretchChannels, stretchedLength } from './stretch'
 import { writeChannel } from './samples'
 
+/** Extra time rendered after the material so a reverb tail can decay. Matches
+ *  the generated impulse length in `impulse.ts`. */
+const REVERB_TAIL_SEC = 2.4
+
 /**
  * Render `params` applied to `source`, offline.
  *
@@ -34,9 +38,16 @@ export async function renderToBuffer(
   const stretched = stretchChannels(channels, sampleRate, params, (f) => onProgress?.(f * 0.7, 'stretch'))
   const frames = stretched[0]?.length ?? stretchedLength(source.length, params.speed)
 
+  // With reverb engaged, render past the end of the material so the tail
+  // decays instead of being cut dead on the last source frame. Without this a
+  // "Slow + Reverb" export ends on an abrupt chop, which is audible and is the
+  // one preset most likely to be exported.
+  const tailFrames = params.reverbMix > 0 ? Math.ceil(REVERB_TAIL_SEC * sampleRate) : 0
+  const renderFrames = Math.max(1, frames + tailFrames)
+
   const makeContext =
     contextFactory ?? ((ch, len, rate) => new OfflineAudioContext(ch, len, rate))
-  const ctx = makeContext(channelCount, Math.max(1, frames), sampleRate)
+  const ctx = makeContext(channelCount, renderFrames, sampleRate)
 
   const buffer = ctx.createBuffer(channelCount, Math.max(1, frames), sampleRate)
   stretched.forEach((data, ch) => writeChannel(buffer, data, ch))

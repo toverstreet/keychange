@@ -26,7 +26,18 @@ function Readout({ label, value, sub }: { label: string; value: string; sub?: st
   )
 }
 
-export function AnalysisPanel({ state, onRetry }: { state: AnalysisState; onRetry: () => void }) {
+export function AnalysisPanel({
+  state,
+  onRetry,
+  rateConfirmed = true,
+}: {
+  state: AnalysisState
+  onRetry: () => void
+  /** False when the file had to be decoded at the output device's rate because
+   *  its own rate could not be determined. The panel must not then claim the
+   *  rate was preserved -- that claim is the whole point of the readout. */
+  rateConfirmed?: boolean
+}) {
   const lamp =
     state.kind === 'done' ? 'lamp-on' : state.kind === 'running' ? 'lamp-warn' : state.kind === 'idle' ? '' : 'lamp-err'
 
@@ -69,7 +80,7 @@ export function AnalysisPanel({ state, onRetry }: { state: AnalysisState; onRetr
           <Readout
             label="Source"
             value={`${(state.result.sampleRate / 1000).toFixed(1)}k`}
-            sub="sample rate preserved"
+            sub={rateConfirmed ? 'sample rate preserved' : 'resampled by the browser'}
           />
         </div>
       ) : state.kind === 'running' ? (

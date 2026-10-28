@@ -69,6 +69,36 @@ describe('stretchChannels', () => {
     expect(dominantFreq(out[1], SR)).toBeCloseTo(880, 0)
   })
 
+  it('keeps mono as mono', () => {
+    const out = stretchChannels([sine(440, 1, SR)], SR, { pitchSemitones: 2, speed: 1 })
+    expect(out).toHaveLength(1)
+    expect(dominantFreq(out[0], SR)).toBeCloseTo(493.88, 0)
+  })
+
+  it('processes more than two channels instead of silently emptying the extras', () => {
+    // Handling only the first pair would export a surround file whose later
+    // channels are present in the header but silent -- broken in a way that
+    // looks fine until it is played on a rig that uses them.
+    const freqs = [220, 330, 440, 550, 660, 770]
+    const input = freqs.map((f) => sine(f, 1, SR))
+    const out = stretchChannels(input, SR, { pitchSemitones: 0, speed: 1.25 })
+
+    expect(out).toHaveLength(6)
+    for (let ch = 0; ch < 6; ch++) {
+      expect(out[ch].length, `channel ${ch} length`).toBe(out[0].length)
+      expect(rms(out[ch]), `channel ${ch} is not silent`).toBeGreaterThan(0.3)
+      expect(dominantFreq(out[ch], SR), `channel ${ch} frequency`).toBeCloseTo(freqs[ch], 0)
+    }
+  })
+
+  it('handles an odd channel count, where the last channel has no partner', () => {
+    const input = [sine(220, 1, SR), sine(440, 1, SR), sine(660, 1, SR)]
+    const out = stretchChannels(input, SR, { pitchSemitones: 0, speed: 0.9 })
+    expect(out).toHaveLength(3)
+    expect(rms(out[2])).toBeGreaterThan(0.3)
+    expect(dominantFreq(out[2], SR)).toBeCloseTo(660, 0)
+  })
+
   it('is deterministic, which is what makes export parity provable', () => {
     const input = sine(440, 1, SR)
     const a = stretchChannels([input], SR, { pitchSemitones: 3, speed: 0.9 })[0]

@@ -43,9 +43,15 @@ export default function Page() {
   const [beatsPerBar, setBeatsPerBar] = useState(4)
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle')
 
+  const [rateConfirmed, setRateConfirmed] = useState(true)
+
   const engineRef = useRef<AudioEngine | null>(null)
   const sourceRef = useRef<AudioBuffer | null>(null)
   const rafRef = useRef<number | null>(null)
+  /** Increments on every load. A load that finishes after a newer one started
+   *  must not install its engine, or the loser's AudioContext stays alive and
+   *  audible. Reachable by opening a stem while a load is still in flight. */
+  const loadGeneration = useRef(0)
 
   // Settings arriving from a shared link are applied before any file is
   // loaded, so opening a link and then dropping the file lands in the shared
@@ -65,18 +71,19 @@ export default function Page() {
     setStems({ kind: 'idle' })
     setExportState({ kind: 'idle' })
 
+    const generation = ++loadGeneration.current
     engineRef.current?.dispose()
     engineRef.current = null
 
     try {
-      const probeCtx = new AudioContext()
-      const buffer = await decodeFile(f, probeCtx)
-      void probeCtx.close()
+      const { buffer, rateConfirmed: confirmed } = await decodeFile(f)
+      if (generation !== loadGeneration.current) return // superseded
 
       sourceRef.current = buffer
       setFile(f)
       setDuration(buffer.duration)
       setPeaks(computePeaks(buffer))
+      setRateConfirmed(confirmed)
 
       const engine = new AudioEngine(buffer, undefined, params)
       engineRef.current = engine
@@ -86,18 +93,23 @@ export default function Page() {
       })
       setLoading(null)
     } catch (err) {
+      if (generation !== loadGeneration.current) return
       setLoading(null)
       setLoadError(err instanceof DecodeError ? err.message : 'That file could not be loaded.')
       return
     }
+
+    if (generation !== loadGeneration.current) return
 
     // Analysis runs alongside playback rather than gating it: the file is
     // playable immediately and the readouts fill in when they are ready.
     setAnalysis({ kind: 'running' })
     try {
       const result: AnalysisResult = await analyze(f)
+      if (generation !== loadGeneration.current) return
       setAnalysis({ kind: 'done', result })
     } catch (err) {
+      if (generation !== loadGeneration.current) return
       if (err instanceof WorkerUnreachableError) setAnalysis({ kind: 'offline' })
       else if (err instanceof WorkerRejectedFileError) setAnalysis({ kind: 'error', message: err.message })
       else setAnalysis({ kind: 'error', message: 'Analysis failed.' })
@@ -134,11 +146,12 @@ export default function Page() {
   // --- parameters -------------------------------------------------------
 
   const update = useCallback((partial: Partial<Params>) => {
-    setParams((prev) => {
-      const next = { ...prev, ...partial }
-      engineRef.current?.setParams(partial)
-      return next
-    })
+    // The engine call stays outside the updater. React treats updater
+    // functions as pure and may run them more than once -- React 19 StrictMode
+    // double-invokes them in development -- which would double every graph
+    // update. It is harmless only while every partial is an absolute value.
+    engineRef.current?.setParams(partial)
+    setParams((prev) => ({ ...prev, ...partial }))
     setShareState('idle')
   }, [])
 
@@ -177,7 +190,11 @@ export default function Page() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return
+      // Space also activates a focused button, which is where focus lands
+      // after any preset or transport click -- without this it would both
+      // press the button and toggle the transport.
+      const el = e.target as HTMLElement | null
+      if (el?.closest?.('input, button, select, textarea, [contenteditable]')) return
       if (e.code === 'Space') {
         e.preventDefault()
         toggle()
@@ -213,7 +230,14 @@ export default function Page() {
         setExportState({ kind: 'working', label: `Encoding ${format.toUpperCase()}…`, progress: 0.88 })
         await new Promise((r) => setTimeout(r, 30))
 
-        const bytes = format === 'wav' ? encodeWav(rendered) : encodeMp3(rendered)
+        const bytes =
+          format === 'wav'
+            ? encodeWav(rendered)
+            : await encodeMp3(rendered, undefined, (f) =>
+                // Real encode progress rather than a bar pinned at 88% while
+                // the tab is busy.
+                setExportState({ kind: 'working', label: 'Encoding MP3…', progress: 0.88 + f * 0.12 }),
+              )
         const filename = exportFilename(file.name, params, format)
         const blob = new Blob([bytes as unknown as BlobPart], {
           type: format === 'wav' ? 'audio/wav' : 'audio/mpeg',
@@ -339,7 +363,7 @@ export default function Page() {
             </div>
           </section>
 
-          <AnalysisPanel state={analysis} onRetry={retryAnalysis} />
+          <AnalysisPanel state={analysis} onRetry={retryAnalysis} rateConfirmed={rateConfirmed} />
           <PitchSpeed params={params} onChange={update} disabled={!ready} />
           <LoopBar
             params={params}

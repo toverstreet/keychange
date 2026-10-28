@@ -60,7 +60,9 @@ export const TONE_PRESETS: Record<string, number[]> = {
 export const STYLE_PRESETS: Record<string, Partial<Params>> = {
   slowReverb: { speed: 0.85, reverbMix: 0.45, pitchSemitones: 0 },
   speedUp: { speed: 1.25, reverbMix: 0, pitchSemitones: 0 },
-  garage: { speed: 0.92, reverbMix: 0.3, pitchSemitones: 0, eqGainsDb: TONE_PRESETS.bass },
+  // A copy, not a reference: sharing the array would let one in-place write
+  // corrupt both presets globally.
+  garage: { speed: 0.92, reverbMix: 0.3, pitchSemitones: 0, eqGainsDb: [...TONE_PRESETS.bass] },
 }
 
 export const STYLE_PRESET_LABELS: Record<keyof typeof STYLE_PRESETS & string, string> = {

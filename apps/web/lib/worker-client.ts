@@ -56,9 +56,16 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
 
   if (res.ok) return res
 
+  // A 404 is about the worker's state, not the file: separation job ids live
+  // in an in-process registry that dies with a worker restart. Reporting that
+  // as a problem with the user's audio sends them looking in the wrong place.
+  if (res.status === 404) {
+    throw new WorkerUnreachableError('That job is no longer known to the worker; it may have restarted.')
+  }
+
   // 4xx about the file is the user's problem and is reported as such; anything
   // else is the worker's problem and degrades the same way as being offline.
-  if (res.status === 400 || res.status === 415 || res.status === 404) {
+  if (res.status === 400 || res.status === 415) {
     let detail = `Request failed (${res.status})`
     try {
       const body = (await res.json()) as { detail?: string }
@@ -96,6 +103,31 @@ export async function analyze(file: File): Promise<AnalysisResult> {
   form.append('file', file)
   const res = await request('/analyze', { method: 'POST', body: form })
   return parseOr<AnalysisResult>(analysisResultSchema, await res.json(), 'analysis')
+}
+
+/**
+ * Transcode to WAV via the worker's ffmpeg, for codecs the browser refuses.
+ *
+ * Lives here rather than in decode.ts so that this module really is the only
+ * place that knows the worker's routes exist -- a hosted worker with a
+ * differently shaped decode endpoint should break in one file, not two.
+ */
+export async function decodeViaWorker(file: File): Promise<ArrayBuffer> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await request('/decode', { method: 'POST', body: form })
+  return res.arrayBuffer()
+}
+
+/** Source sample rate via the worker's ffprobe, when the header sniffer cannot
+ *  determine it locally. */
+export async function probeSampleRate(file: File): Promise<number | null> {
+  try {
+    const result = await analyze(file)
+    return result.sampleRate
+  } catch {
+    return null
+  }
 }
 
 export async function separate(file: File): Promise<SeparationJob> {

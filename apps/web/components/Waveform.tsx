@@ -37,6 +37,11 @@ export function Waveform({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  /** The waveform, loop region and bar lines, rendered once per change rather
+   *  than per animation frame. Repainting 1600 buckets at 60 fps just to move
+   *  a playhead is ~96k fillRect calls a second for no benefit. */
+  const staticLayer = useRef<HTMLCanvasElement | null>(null)
+  const staticKey = useRef<string>('')
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -61,6 +66,31 @@ export function Waveform({
     const mid = h / 2
     const xOf = (sec: number) => (durationSec > 0 ? (sec / durationSec) * w : 0)
 
+    // Rebuild the static layer only when something other than the playhead
+    // changed. `peaks` is identity-compared, which is correct: it is replaced
+    // wholesale when a new file loads.
+    const key = [w, h, dpr, durationSec, loop?.a, loop?.b, showBars, beatsPerBar, beatGrid.length, peaks?.length].join('|')
+    if (!staticLayer.current || staticKey.current !== key) {
+      const layer = staticLayer.current ?? document.createElement('canvas')
+      layer.width = canvas.width
+      layer.height = canvas.height
+      const lctx = layer.getContext('2d')
+      if (lctx) {
+        lctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        lctx.clearRect(0, 0, w, h)
+        paintStatic(lctx, w, h, mid, xOf)
+      }
+      staticLayer.current = layer
+      staticKey.current = key
+    }
+
+    function paintStatic(
+      ctx: CanvasRenderingContext2D,
+      w: number,
+      h: number,
+      mid: number,
+      xOf: (sec: number) => number,
+    ) {
     // Loop region sits behind the waveform so it reads as highlighted tape.
     if (loop) {
       const x1 = xOf(loop.a)
@@ -100,18 +130,31 @@ export function Waveform({
 
     if (peaks && peaks.length >= 2) {
       const buckets = peaks.length / 2
-      const playedX = xOf(positionSec)
       for (let i = 0; i < buckets; i++) {
         const x = (i / buckets) * w
         const min = peaks[i * 2]
         const max = peaks[i * 2 + 1]
         const y1 = mid - max * (h / 2 - 6)
         const y2 = mid - min * (h / 2 - 6)
-        // Played portion in amber, unplayed in cool grey: position is readable
-        // at a glance without hunting for the playhead.
-        ctx.fillStyle = x <= playedX ? 'rgba(255, 182, 39, 0.92)' : 'rgba(150, 163, 174, 0.5)'
+        ctx.fillStyle = 'rgba(150, 163, 174, 0.5)'
         ctx.fillRect(x, y1, Math.max(1, w / buckets - 0.5), Math.max(1, y2 - y1))
       }
+    }
+    }
+
+    // Composite the cached layer, then tint the played portion in amber so
+    // position is readable at a glance without hunting for the playhead.
+    ctx.drawImage(staticLayer.current, 0, 0, w, h)
+    const playedX = xOf(positionSec)
+    if (playedX > 0 && peaks && peaks.length >= 2) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(0, 0, playedX, h)
+      ctx.clip()
+      ctx.globalCompositeOperation = 'source-atop'
+      ctx.fillStyle = 'rgba(255, 182, 39, 0.92)'
+      ctx.fillRect(0, 0, playedX, h)
+      ctx.restore()
     }
 
     // Playhead

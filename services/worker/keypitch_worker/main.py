@@ -29,9 +29,14 @@ def health() -> dict:
     return {"ok": True}
 
 
+# Deliberately `def`, not `async def`. FastAPI runs sync handlers in a
+# threadpool but runs async ones on the event loop itself -- and the body here
+# is blocking (subprocess, librosa). As `async def`, a ~12 s cold analysis made
+# the whole worker unresponsive, so /health and every separation poll queued
+# behind it.
 @app.post("/analyze")
-async def analyze(file: UploadFile = File(...)) -> dict:
-    data = await file.read()
+def analyze(file: UploadFile = File(...)) -> dict:
+    data = file.file.read()
     if not data:
         raise HTTPException(status_code=400, detail="empty upload")
 
@@ -61,9 +66,11 @@ async def analyze(file: UploadFile = File(...)) -> dict:
 
 
 @app.post("/decode")
-async def decode(file: UploadFile = File(...)) -> FileResponse:
-    """WAV fallback for codecs the browser refuses to decode."""
-    data = await file.read()
+def decode(file: UploadFile = File(...)) -> FileResponse:
+    """WAV fallback for codecs the browser refuses to decode.
+
+    Sync for the same reason as /analyze: the ffmpeg call blocks."""
+    data = file.file.read()
     if not data:
         raise HTTPException(status_code=400, detail="empty upload")
 
@@ -82,8 +89,8 @@ async def decode(file: UploadFile = File(...)) -> FileResponse:
 
 
 @app.post("/separate")
-async def start_separation(file: UploadFile = File(...)) -> dict:
-    data = await file.read()
+def start_separation(file: UploadFile = File(...)) -> dict:
+    data = file.file.read()
     if not data:
         raise HTTPException(status_code=400, detail="empty upload")
     job = separation.start_job(data, file.filename or "audio")

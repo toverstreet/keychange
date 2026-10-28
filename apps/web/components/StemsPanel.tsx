@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { pollSeparation, separate, stemUrl, WorkerUnreachableError } from '@/lib/worker-client'
 import { Panel } from './Panel'
 
@@ -24,18 +24,14 @@ export function StemsPanel({
   onLoadStem: (url: string, label: string) => void
   disabled?: boolean
 }) {
-  const abortRef = useRef<AbortController | null>(null)
-
   const run = useCallback(async () => {
     if (!file) return
     onState({ kind: 'working', progress: 0, id: '' })
-    abortRef.current = new AbortController()
     try {
       const job = await separate(file)
       onState({ kind: 'working', progress: 0, id: job.id })
       const finished = await pollSeparation(job.id, {
         onProgress: (p) => onState({ kind: 'working', progress: p, id: job.id }),
-        signal: abortRef.current.signal,
       })
       if (finished.status === 'error') {
         onState({ kind: 'error', message: finished.error ?? 'Separation failed.' })

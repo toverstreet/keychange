@@ -21,11 +21,31 @@ function toInt16(input: Float32Array): Int16Array {
   return out
 }
 
-export function encodeMp3(
+/** Rates lamejs can encode (MPEG-1, 2 and 2.5). */
+const SUPPORTED_RATES = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000]
+
+export class Mp3RateError extends Error {}
+
+/**
+ * Encode to MP3, yielding to the event loop periodically.
+ *
+ * Async because encoding the 8.5-minute reference file runs ~21,000 blocks; done
+ * synchronously that freezes the tab for several seconds with a progress bar
+ * that cannot move. The yields cost almost nothing and keep the UI alive.
+ */
+export async function encodeMp3(
   buffer: AudioBuffer,
   kbps: number = DEFAULT_MP3_KBPS,
   onProgress?: (fraction: number) => void,
-): Uint8Array {
+): Promise<Uint8Array> {
+  if (!SUPPORTED_RATES.includes(buffer.sampleRate)) {
+    // Encoding anyway produces a file that plays at the wrong speed rather
+    // than failing, which is far worse than refusing.
+    throw new Mp3RateError(
+      `MP3 cannot carry ${buffer.sampleRate} Hz audio. Export WAV instead, which preserves it exactly.`,
+    )
+  }
+
   const channels = Math.min(2, buffer.numberOfChannels)
   const encoder = new Mp3Encoder(channels, buffer.sampleRate, kbps)
 
@@ -35,15 +55,21 @@ export function encodeMp3(
   // 1152 samples is one MPEG-1 Layer III granule pair, the unit the encoder
   // expects. Chunking on anything else leaves a partial frame at every boundary.
   const BLOCK = 1152
+  const YIELD_EVERY = 256
   const chunks: Uint8Array[] = []
 
-  for (let i = 0; i < left.length; i += BLOCK) {
+  let block = 0
+  for (let i = 0; i < left.length; i += BLOCK, block++) {
     const l = left.subarray(i, i + BLOCK)
     const encoded = right
       ? encoder.encodeBuffer(l, right.subarray(i, i + BLOCK))
       : encoder.encodeBuffer(l)
     if (encoded.length > 0) chunks.push(new Uint8Array(encoded))
-    if (onProgress && i % (BLOCK * 256) === 0) onProgress(i / left.length)
+
+    if (block % YIELD_EVERY === 0) {
+      onProgress?.(i / left.length)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
   }
 
   // Without the explicit flush the encoder's final partial granule is dropped,
