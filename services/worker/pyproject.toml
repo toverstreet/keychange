@@ -1,0 +1,24 @@
+[project]
+name = "worker"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.162.0",
+    "librosa>=0.11.0",
+    "numpy>=2.4.6",
+    "python-multipart>=0.0.32",
+    "scipy>=1.17.1",
+    "soundfile>=0.14.0",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["ignore::FutureWarning", "ignore::UserWarning"]
