@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from . import cache
+from . import cache, separate as separation
 from .analyze import ANALYSIS_SR, analyze_array
 from .audio_io import DecodeError, decode_to_array, decode_to_wav, probe
 
@@ -79,3 +79,33 @@ async def decode(file: UploadFile = File(...)) -> FileResponse:
             except DecodeError as exc:
                 raise HTTPException(status_code=415, detail=str(exc)) from exc
     return FileResponse(out, media_type="audio/wav", filename="source.wav")
+
+
+@app.post("/separate")
+async def start_separation(file: UploadFile = File(...)) -> dict:
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="empty upload")
+    job = separation.start_job(data, file.filename or "audio")
+    return job.as_dict()
+
+
+@app.get("/separate/{job_id}")
+def separation_status(job_id: str) -> dict:
+    try:
+        return separation.get_job(job_id).as_dict()
+    except separation.UnknownJobError as exc:
+        raise HTTPException(status_code=404, detail="unknown separation job") from exc
+
+
+@app.get("/separate/{job_id}/{stem}")
+def separation_stem(job_id: str, stem: str) -> FileResponse:
+    if stem not in separation.STEM_FILES:
+        raise HTTPException(status_code=404, detail="unknown stem")
+    try:
+        path = separation.stem_path(job_id, stem)
+    except separation.UnknownJobError as exc:
+        raise HTTPException(status_code=404, detail="stem not ready") from exc
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="stem file missing")
+    return FileResponse(path, media_type="audio/wav", filename=f"{stem}.wav")

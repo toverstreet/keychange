@@ -14,6 +14,6 @@ export function bufferFrom(
   sampleRate = SR,
 ): AudioBuffer {
   const buf = ctx.createBuffer(channelData.length, channelData[0].length, sampleRate)
-  channelData.forEach((data, ch) => buf.copyToChannel(data, ch))
+  channelData.forEach((data, ch) => buf.copyToChannel(data as Float32Array<ArrayBuffer>, ch))
   return buf
 }

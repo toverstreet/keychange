@@ -1,6 +1,7 @@
 import type { Params } from '@keypitch/contract'
 import { buildEffectChain } from './effect-chain'
 import { stretchChannels, stretchedLength } from './stretch'
+import { writeChannel } from './samples'
 
 /**
  * Render `params` applied to `source`, offline.
@@ -38,7 +39,7 @@ export async function renderToBuffer(
   const ctx = makeContext(channelCount, Math.max(1, frames), sampleRate)
 
   const buffer = ctx.createBuffer(channelCount, Math.max(1, frames), sampleRate)
-  stretched.forEach((data, ch) => buffer.copyToChannel(data, ch))
+  stretched.forEach((data, ch) => writeChannel(buffer, data, ch))
 
   const src = ctx.createBufferSource()
   src.buffer = buffer
