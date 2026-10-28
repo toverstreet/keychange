@@ -1,0 +1,97 @@
+# KeyPitch
+
+A local clone of [keypitch.app](https://keypitch.app). Load an audio file, read its
+key / BPM / pitch, shift pitch and speed independently, loop a section snapped to the
+beat, shape it with EQ and reverb, separate vocals from instrumental, and export.
+
+Nothing is uploaded anywhere. There is no size or duration cap, and the source sample
+rate is preserved through the whole pipeline.
+
+## Running it
+
+Two processes. The web app is useful on its own; the worker adds analysis and stems.
+
+```bash
+npm install
+npm run dev        # http://localhost:3000
+```
+
+```bash
+npm run worker     # http://127.0.0.1:8008
+```
+
+The worker needs [uv](https://docs.astral.sh/uv/) and ffmpeg. With it stopped the app
+still loads, plays, pitches, slows, loops and exports — only the analysis and stems
+panels degrade, and they say so inline.
+
+## Tests
+
+```bash
+npm test                                   # 96 tests across the web app and contract
+cd services/worker && uv run pytest        # 30 tests
+```
+
+The audio tests are not mocks. They render through `node-web-audio-api`, a real Web
+Audio implementation, and assert on measured spectra: a 440 Hz sine shifted up two
+semitones must land at 493.88 Hz, a 1 kHz EQ boost must raise 1 kHz without moving
+125 Hz, and the offline export must match the live graph band for band. The worker's
+estimators are checked against generated signals with known answers — a 120 BPM click
+train, a C major scale, a 440 Hz tone.
+
+## How it fits together
+
+```
+apps/web/          Next.js — UI, audio engine, export
+packages/contract/ shared types + zod schemas for worker I/O
+services/worker/   FastAPI — /analyze, /separate
+```
+
+`apps/web/lib/worker-client.ts` is the only file in the frontend that knows the worker
+exists, and it validates every response against the shared schemas. To point at a hosted
+GPU worker instead, set `NEXT_PUBLIC_WORKER_URL`. Nothing else changes.
+
+## Decisions worth knowing before changing things
+
+**One stretch implementation, shared by playback and export.** Stretching the whole
+8.5-minute reference track takes 0.5 s, so changing pitch or speed re-renders through
+the same code the export uses rather than running a separate real-time path. Export
+parity is therefore structural, not something a test has to hope for. The cost is about
+half a second to settle after you release a slider.
+
+**SoundTouchJS truncates its own tail.** Extracting until the source runs dry strands
+170–500 ms in its internal FIFO, and the shortfall does not grow with input length. Left
+alone it clips the end off every export, invisibly. `stretchChannels` pads the source
+with a second of silence and trims to an exact frame count. Don't remove that.
+`spike/README.md` has the measurements.
+
+**BPM is a line fit, not librosa's tempo scalar.** The scalar is quantised by hop length
+and pulled by a prior at 120 BPM — it read 117.45 for a true 120. Fitting beat time
+against beat index held within 0.1% at every tempo tested.
+
+**Key confidence gates on chroma peakedness.** The best-vs-runner-up margin alone is
+inverted on noise: white noise scored a *higher* margin (0.262) than a clear C major
+triad (0.077). A low-confidence key is shown qualified rather than asserted.
+
+**Don't pass `segment` to Demucs.** `htdemucs` is a transformer with a fixed training
+length of 343,980 samples; overriding the segment fails inside the model. Memory is
+bounded by its own overlapped splitting.
+
+**Stems come back at 44.1 kHz** because that is the model's rate. This is the one place
+the source rate is not preserved, and the UI says so.
+
+## Verified against
+
+`~/Desktop/Won't get fooled again 135bpm.m4a` — 8:29, 48 kHz stereo.
+
+| | |
+|---|---|
+| Analysis | A major (74% confidence), 135.30 BPM against the filename's 135, 110.0 Hz (A2) |
+| Cold analysis | 11.6 s |
+| Export, pitched down a whole step at 0.85× | 17.7 s, 599.2 s out of an expected 599.2 s, 48 kHz preserved |
+| Exported file re-analysed | **G major, 98.0 Hz** — exactly a whole step below the source |
+| Separation | 48 s for the full track on MPS, 10.6× realtime |
+| 4-bar loop | 7.0 s against 7.1 s expected at 135.3 BPM |
+
+## Not included
+
+Lyrics display. Everything else keypitch.app does is here.

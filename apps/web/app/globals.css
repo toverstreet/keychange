@@ -168,14 +168,66 @@ input[type="range"]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(255
 input[type="range"]:active::-webkit-slider-thumb { transform: translateY(1px); }
 input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(255,182,39,0.4); }
 
+/* Vertical faders.
+   The groove is drawn by the wrapper rather than by ::-webkit-slider-runnable-track:
+   under `writing-mode: vertical-lr` the track pseudo-element does not render a
+   visible slot in Chrome, leaving the thumbs floating with nothing behind them. */
+.fader {
+  position: relative;
+  height: 112px;
+  width: 26px;
+  display: grid;
+  place-items: center;
+}
+
+.fader::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #040506, #171b1f);
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.95), 0 1px 0 rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+/* The centre detent: 0 dB should be findable without reading the number. */
+.fader::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 1px;
+  background: rgba(255, 182, 39, 0.3);
+  pointer-events: none;
+}
+
 input[type="range"].vertical {
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 22px;
-  height: 108px;
+  width: 26px;
+  height: 112px;
+  position: relative;
+  z-index: 1;
+  margin: 0;
 }
-input[type="range"].vertical::-webkit-slider-runnable-track { width: 4px; height: 100%; }
-input[type="range"].vertical::-webkit-slider-thumb { width: 22px; height: 14px; margin-top: 0; margin-left: -9px; }
+input[type="range"].vertical::-webkit-slider-runnable-track {
+  width: 5px;
+  height: 100%;
+  background: transparent;
+  box-shadow: none;
+}
+input[type="range"].vertical::-webkit-slider-thumb {
+  width: 24px;
+  height: 13px;
+  margin-top: 0;
+  margin-left: -10px;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.35) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #666f78, #333a41 50%, #1c2126);
+}
 
 /* -------------------------------------------------------------- buttons */
 

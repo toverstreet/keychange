@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
-export * from './params.js'
-import { EQ_BAND_COUNT } from './params.js'
+export * from './params'
+import { EQ_BAND_COUNT } from './params'
 
 /**
  * Worker -> frontend contract.

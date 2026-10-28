@@ -6,7 +6,7 @@ import {
   EQ_BANDS,
   TONE_PRESETS,
   STYLE_PRESETS,
-} from '../src/index.js'
+} from '../src/index'
 
 const valid = {
   key: 'G', scale: 'major' as const, keyConfidence: 0.71,

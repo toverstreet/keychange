@@ -63,17 +63,21 @@ export function EqPanel({
                 {params.eqGainsDb[i] > 0 ? '+' : ''}
                 {params.eqGainsDb[i].toFixed(0)}
               </span>
-              <input
-                type="range"
-                className="vertical"
-                min={PARAM_RANGES.eqGainDb.min}
-                max={PARAM_RANGES.eqGainDb.max}
-                step={PARAM_RANGES.eqGainDb.step}
-                value={params.eqGainsDb[i]}
-                disabled={disabled}
-                onChange={(e) => setBand(i, Number(e.target.value))}
-                aria-label={`${bandLabel(hz)} hertz gain`}
-              />
+              <div className="fader">
+                <input
+                  type="range"
+                  className="vertical"
+                  min={PARAM_RANGES.eqGainDb.min}
+                  max={PARAM_RANGES.eqGainDb.max}
+                  step={PARAM_RANGES.eqGainDb.step}
+                  value={params.eqGainsDb[i]}
+                  disabled={disabled}
+                  onChange={(e) => setBand(i, Number(e.target.value))}
+                  onDoubleClick={() => setBand(i, 0)}
+                  title="Double-click to reset this band"
+                  aria-label={`${bandLabel(hz)} hertz gain`}
+                />
+              </div>
               <span style={{ color: 'var(--ink-faint)', fontSize: 11, letterSpacing: '0.04em' }}>{bandLabel(hz)}</span>
             </div>
           ))}
