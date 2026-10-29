@@ -7,7 +7,34 @@ beat, shape it with EQ and reverb, separate vocals from instrumental, and export
 Nothing is uploaded anywhere. There is no size or duration cap, and the source sample
 rate is preserved through the whole pipeline.
 
-## Running it
+## Running it as a desktop app
+
+```bash
+desktop/build_app.sh
+open desktop/KeyChange.app
+```
+
+That builds the production app and assembles `desktop/KeyChange.app`, which starts both
+servers and opens a window with no address bar or tabs. Drag it to the Dock, or
+`ln -sfn "$PWD/desktop/KeyChange.app" /Applications/KeyChange.app`.
+
+Re-run `build_app.sh` after changing the code — the app runs the built copy, and the
+launcher offers to rebuild when it notices the source is newer. **Moving the project**
+means rebuilding; moving the app does not, because the paths are baked in at build time.
+
+- Port 3210, deliberately not 3000, so the app and `npm run dev` can both run.
+- Logs: `~/Library/Logs/KeyChange/`
+- Stop the servers: `desktop/stop.sh`. The launcher detaches them on purpose, so closing
+  the window does not abandon a Demucs run that is minutes in — the cost is that they
+  outlive the window, and the worker keeps torch resident.
+
+**Open it at `127.0.0.1`, not at the machine's LAN address.** Chrome blocks a page served
+from a LAN IP from fetching `127.0.0.1`, so analysis and stems fail with nothing but
+`TypeError: Failed to fetch` in the console. The launcher always uses `127.0.0.1`; reaching
+the app from another device would mean pointing `NEXT_PUBLIC_WORKER_URL` at a routable
+address and rebuilding.
+
+## Running it from a terminal
 
 Two processes. The web app is useful on its own; the worker adds analysis and stems.
 

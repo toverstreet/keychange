@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>KeyChange</string>
+    <key>CFBundleDisplayName</key>
+    <string>KeyChange</string>
+    <key>CFBundleIdentifier</key>
+    <string>ai.mule.keychange</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>KeyChange</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <!-- Agent app: no Dock icon of its own while it runs. The launcher exits
+         as soon as the window is open, and a bouncing icon for a process that
+         lives two seconds is noise. The window belongs to the browser. -->
+    <key>LSUIElement</key>
+    <true/>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+</dict>
+</plist>

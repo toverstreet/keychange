@@ -9,7 +9,7 @@ import { exportFilename, renderToBuffer } from '@/lib/audio/render'
 import { encodeWav } from '@/lib/audio/wav'
 import { encodeMp3 } from '@/lib/audio/mp3'
 import { barLines, snapToGrid } from '@/lib/audio/snap'
-import { analyze, WorkerRejectedFileError, WorkerUnreachableError } from '@/lib/worker-client'
+import { analyze, health, WorkerRejectedFileError, WorkerUnreachableError } from '@/lib/worker-client'
 import { paramsFromHash, shareUrl } from '@/lib/share'
 import { clampView, fitRegion, followPlayhead, spanOf, zoomAt, type View } from '@/lib/audio/viewport'
 import { AnalysisPanel, type AnalysisState } from '@/components/AnalysisPanel'
@@ -58,6 +58,7 @@ export default function Page() {
    *  must not install its engine, or the loser's AudioContext stays alive and
    *  audible. Reachable by opening a stem while a load is still in flight. */
   const loadGeneration = useRef(0)
+  const workerWaitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Settings arriving from a shared link are applied before any file is
   // loaded, so opening a link and then dropping the file lands in the shared
@@ -109,29 +110,61 @@ export default function Page() {
 
     // Analysis runs alongside playback rather than gating it: the file is
     // playable immediately and the readouts fill in when they are ready.
+    await runAnalysis(f, generation)
+  }, [params])
+
+  /**
+   * Analyse, waiting for the worker if it is still starting.
+   *
+   * Polls /health rather than retrying analyze(): a retry loop on analyze
+   * would re-upload the whole file -- twelve megabytes for the reference
+   * track -- on every attempt, for a request that cannot succeed until the
+   * worker is listening anyway.
+   */
+  const runAnalysis = useCallback(async (f: File, generation: number) => {
+    if (workerWaitTimer.current) clearTimeout(workerWaitTimer.current)
+
     setAnalysis({ kind: 'running' })
+
+    if (!(await health())) {
+      if (generation !== loadGeneration.current) return
+      setAnalysis({ kind: 'offline', retrying: true })
+
+      // Roughly thirty seconds in total, which covers the worker's own
+      // startup when the desktop app launches both at once.
+      const delays = [1500, 2000, 3000, 4000, 6000, 6000, 8000]
+      for (const delay of delays) {
+        const slept = await new Promise<boolean>((resolve) => {
+          workerWaitTimer.current = setTimeout(() => resolve(true), delay)
+        })
+        if (!slept || generation !== loadGeneration.current) return
+        if (await health()) break
+      }
+
+      if (generation !== loadGeneration.current) return
+      if (!(await health())) {
+        setAnalysis({ kind: 'offline', retrying: false })
+        return
+      }
+      setAnalysis({ kind: 'running' })
+    }
+
     try {
       const result: AnalysisResult = await analyze(f)
       if (generation !== loadGeneration.current) return
       setAnalysis({ kind: 'done', result })
     } catch (err) {
       if (generation !== loadGeneration.current) return
-      if (err instanceof WorkerUnreachableError) setAnalysis({ kind: 'offline' })
+      if (err instanceof WorkerUnreachableError) setAnalysis({ kind: 'offline', retrying: false })
       else if (err instanceof WorkerRejectedFileError) setAnalysis({ kind: 'error', message: err.message })
       else setAnalysis({ kind: 'error', message: 'Analysis failed.' })
     }
-  }, [params])
+  }, [])
 
   const retryAnalysis = useCallback(async () => {
     if (!file) return
-    setAnalysis({ kind: 'running' })
-    try {
-      setAnalysis({ kind: 'done', result: await analyze(file) })
-    } catch (err) {
-      if (err instanceof WorkerUnreachableError) setAnalysis({ kind: 'offline' })
-      else setAnalysis({ kind: 'error', message: err instanceof Error ? err.message : 'Analysis failed.' })
-    }
-  }, [file])
+    await runAnalysis(file, loadGeneration.current)
+  }, [file, runAnalysis])
 
   // Peaks follow the visible window, which is what makes zooming reveal real
   // detail rather than magnifying the same buckets.
@@ -162,6 +195,7 @@ export default function Page() {
   }, [followPlay])
 
   useEffect(() => () => engineRef.current?.dispose(), [])
+  useEffect(() => () => { if (workerWaitTimer.current) clearTimeout(workerWaitTimer.current) }, [])
 
   // --- parameters -------------------------------------------------------
 

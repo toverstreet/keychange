@@ -11,3 +11,7 @@ services/worker/.cache/
 /*.wav
 /*.mp3
 spike/out/
+
+# Built bundle: assembled by desktop/build_app.sh, with machine-specific paths
+# baked into its launcher. Nothing in it is portable to another machine.
+desktop/KeyChange.app/

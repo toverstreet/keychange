@@ -7,7 +7,7 @@ export type AnalysisState =
   | { kind: 'idle' }
   | { kind: 'running' }
   | { kind: 'done'; result: AnalysisResult }
-  | { kind: 'offline' }
+  | { kind: 'offline'; retrying: boolean }
   | { kind: 'error'; message: string }
 
 function Readout({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -48,7 +48,15 @@ export function AnalysisPanel({
         <div className="flex items-center gap-2">
           <span className={`lamp ${lamp} ${state.kind === 'running' ? 'pulsing' : ''}`} />
           <span className="legend">
-            {state.kind === 'running' ? 'Working' : state.kind === 'done' ? 'Ready' : state.kind === 'offline' ? 'Worker off' : ''}
+            {state.kind === 'running'
+              ? 'Working'
+              : state.kind === 'done'
+                ? 'Ready'
+                : state.kind === 'offline'
+                  ? state.retrying
+                    ? 'Starting'
+                    : 'Worker off'
+                  : ''}
           </span>
         </div>
       }
@@ -86,6 +94,19 @@ export function AnalysisPanel({
       ) : state.kind === 'running' ? (
         <div className="display px-4 py-6 readout pulsing" style={{ fontSize: 16 }}>
           Analysing key, tempo and pitch…
+        </div>
+      ) : state.kind === 'offline' && state.retrying ? (
+        // Launching the desktop app starts the worker, but it imports librosa
+        // and numpy before it answers -- about twenty seconds. Telling someone
+        // it is "not running" during its own startup, and making them press
+        // Retry, is wrong twice over.
+        <div className="display px-4 py-6">
+          <div className="readout pulsing" style={{ fontSize: 16 }}>
+            Waiting for the analysis worker…
+          </div>
+          <div style={{ color: 'var(--ink-faint)', fontSize: 13, marginTop: 8, lineHeight: 1.5 }}>
+            It takes a moment to start. Everything else already works — playback, pitch, speed, looping and export.
+          </div>
         </div>
       ) : state.kind === 'offline' ? (
         <div className="display px-4 py-4">
