@@ -337,21 +337,24 @@ export default function Page() {
   const header = useMemo(
     () => (
       <header className="flex items-end justify-between gap-4 flex-wrap mb-6">
-        <div>
-          <h1
-            style={{
-              fontSize: 40,
-              fontWeight: 700,
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              lineHeight: 1,
-            }}
-          >
-            Key<span style={{ color: 'var(--amber)' }}>Change</span>
-          </h1>
-          <p className="legend" style={{ marginTop: 8 }}>
-            Local audio studio · nothing leaves this machine
-          </p>
+        <div className="flex items-center gap-5 flex-wrap">
+          <div>
+            <h1
+              style={{
+                fontSize: 40,
+                fontWeight: 700,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                lineHeight: 1,
+              }}
+            >
+              Key<span style={{ color: 'var(--amber)' }}>Change</span>
+            </h1>
+            <p className="legend" style={{ marginTop: 8 }}>
+              Local audio studio · nothing leaves this machine
+            </p>
+          </div>
+          <PoweredBy />
         </div>
         {file && (
           <div className="display px-3 py-2" style={{ maxWidth: 440 }}>
@@ -375,7 +378,7 @@ export default function Page() {
   )
 
   return (
-    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 48px' }}>
+    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 80px' }}>
       {header}
 
       {!file ? (
@@ -473,8 +476,6 @@ export default function Page() {
           </div>
         </div>
       )}
-
-      <PoweredBy />
     </main>
   )
 }
