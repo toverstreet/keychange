@@ -78,6 +78,19 @@ class UnknownJobError(KeyError):
     pass
 
 
+def stems_available() -> bool:
+    """Whether the optional separation dependencies are installed.
+
+    Checked rather than assumed: torch and demucs are an optional extra, so a
+    light install reaches this code with them absent. Letting that surface as
+    a bare ImportError several minutes into a job would be the worst possible
+    way to learn about it.
+    """
+    import importlib.util
+
+    return all(importlib.util.find_spec(name) is not None for name in ("torch", "demucs", "soundfile"))
+
+
 def _separator():
     """Built lazily: importing demucs pulls in torch, which costs seconds, and
     the analysis endpoint should not pay for it."""
@@ -144,6 +157,17 @@ def _run(job: Job, digest: str, source: Path) -> None:
 def start_job(data: bytes, filename: str = "audio") -> Job:
     """Start (or return a cached) separation for these bytes."""
     digest = cache.content_hash(data)
+
+    if not stems_available():
+        job = Job(id=digest, status="error", progress=0.0)
+        job.error = (
+            "Stem separation is not installed. This copy was set up without it, "
+            "which keeps the install about 900 MB smaller. To add it, run "
+            "`uv sync --extra stems` in services/worker and restart the worker."
+        )
+        with _jobs_lock:
+            _jobs[digest] = job
+        return job
 
     with _jobs_lock:
         existing = _jobs.get(digest)

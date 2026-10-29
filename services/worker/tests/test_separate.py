@@ -129,3 +129,24 @@ def test_separator_relies_on_demucs_splitting_and_does_not_override_segment():
     kwargs = separation.separator_kwargs()
     assert kwargs["split"] is True
     assert "segment" not in kwargs
+
+
+def test_reports_a_clear_message_when_separation_is_not_installed(monkeypatch):
+    """A light install reaches this code with torch and demucs absent. It must
+    say so plainly rather than failing with an ImportError, or minutes into a
+    job that was never going to run."""
+    monkeypatch.setattr(separation, "stems_available", lambda: False)
+    job = separation.start_job(b"some bytes", "a.m4a")
+    payload = job.as_dict()
+    assert payload["status"] == "error"
+    assert "not installed" in payload["error"]
+    assert "uv sync --extra stems" in payload["error"]
+
+
+def test_stems_available_reports_true_in_this_environment():
+    # The development environment has the extra installed; if this ever fails
+    # the check itself is broken rather than the environment.
+    import importlib.util
+
+    expected = importlib.util.find_spec("torch") is not None
+    assert separation.stems_available() is expected

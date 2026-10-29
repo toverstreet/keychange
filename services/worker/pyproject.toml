@@ -3,16 +3,26 @@ name = "worker"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "demucs>=4.0.1",
     "fastapi>=0.162.0",
     "librosa>=0.11.0",
     "numpy>=2.4.6",
     "python-multipart>=0.0.32",
     "scipy>=1.17.1",
     "soundfile>=0.14.0",
+    "uvicorn>=0.54.0",
+]
+
+# Stem separation is optional because it is almost all of the install.
+# torch alone is 565 MB of a 969 MB environment, against roughly 100 MB for
+# everything else. Analysis, pitch, speed, looping and export do not touch it,
+# so an install that skips it still gets the whole practice workflow.
+#   uv sync                 analysis only
+#   uv sync --extra stems   adds Demucs separation
+[project.optional-dependencies]
+stems = [
+    "demucs>=4.0.1",
     "torch>=2.15.0",
     "torchaudio>=2.11.1",
-    "uvicorn>=0.54.0",
 ]
 
 [dependency-groups]

@@ -2368,8 +2368,6 @@ name = "worker"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "demucs", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
-    { name = "demucs", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
     { name = "fastapi" },
     { name = "librosa", version = "0.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "librosa", version = "1.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -2379,9 +2377,15 @@ dependencies = [
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "soundfile" },
+    { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+stems = [
+    { name = "demucs", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "demucs", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
     { name = "torch" },
     { name = "torchaudio" },
-    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -2392,17 +2396,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "demucs", specifier = ">=4.0.1" },
+    { name = "demucs", marker = "extra == 'stems'", specifier = ">=4.0.1" },
     { name = "fastapi", specifier = ">=0.162.0" },
     { name = "librosa", specifier = ">=0.11.0" },
     { name = "numpy", specifier = ">=2.4.6" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "soundfile", specifier = ">=0.14.0" },
-    { name = "torch", specifier = ">=2.15.0" },
-    { name = "torchaudio", specifier = ">=2.11.1" },
+    { name = "torch", marker = "extra == 'stems'", specifier = ">=2.15.0" },
+    { name = "torchaudio", marker = "extra == 'stems'", specifier = ">=2.11.1" },
     { name = "uvicorn", specifier = ">=0.54.0" },
 ]
+provides-extras = ["stems"]
 
 [package.metadata.requires-dev]
 dev = [
