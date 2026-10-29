@@ -7,6 +7,21 @@ beat, shape it with EQ and reverb, separate vocals from instrumental, and export
 Nothing is uploaded anywhere. There is no size or duration cap, and the source sample
 rate is preserved through the whole pipeline.
 
+## Getting it
+
+```bash
+git clone https://github.com/toverstreet/keychange.git
+cd keychange
+./install.sh
+```
+
+The installer adds anything missing (Node, ffmpeg, uv) via Homebrew, sets the project
+up, builds `KeyChange.app` and puts it in Applications. It asks one question: whether to
+include stem separation, which is the difference between a 0.9 GB and a 1.9 GB install.
+`INSTALL.md` is the version of this written for someone who does not live in a terminal.
+
+`git pull && ./install.sh` updates an existing copy.
+
 ## Running it as a desktop app
 
 ```bash
@@ -156,3 +171,11 @@ the source rate is not preserved, and the UI says so.
 ## Not included
 
 Lyrics display. Everything else keypitch.app does is here.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). Built by [Mule AI](https://www.muleai.ai).
+
+Dependencies are not redistributed here: npm and PyPI fetch them on your machine when
+you install, and ffmpeg comes from your own Homebrew. They carry their own licences,
+among them SoundTouchJS and lamejs (LGPL), Demucs (MIT) and PyTorch (BSD).
