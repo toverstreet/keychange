@@ -14,9 +14,12 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="$(date '+%Y%m%d')"
-NAME="KeyChange-${VERSION}"
+# Usage: make_release.sh [output-dir] [version]
+# Defaults to a dated build; pass a version to name a release asset, so the
+# file a user downloads matches the tag they downloaded it from.
 OUT="${1:-$HOME/Desktop}"
+VERSION="${2:-$(date '+%Y%m%d')}"
+NAME="KeyChange-${VERSION}"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
