@@ -49,10 +49,14 @@ if [ -z "$STEMS" ]; then
     # Ctrl-D -- would otherwise abort the whole install on an unbound
     # variable rather than taking the default.
     answer=""
-    if [ -r /dev/tty ]; then
-        # Read from the terminal rather than stdin, so a double-clicked
-        # .command still gets the answer.
-        read -r answer </dev/tty || answer=""
+    # Tested by opening it, not with `[ -r /dev/tty ]`: that checks
+    # permissions and passes even with no controlling terminal, where the
+    # open then fails and leaks "Device not configured" to the screen.
+    # Reading from the terminal rather than stdin is what lets a
+    # double-clicked .command collect the answer at all.
+    if exec 3</dev/tty 2>/dev/null; then
+        read -r answer <&3 || answer=""
+        exec 3<&-
     else
         read -r answer || answer=""
     fi
