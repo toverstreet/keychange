@@ -162,7 +162,7 @@ def start_job(data: bytes, filename: str = "audio") -> Job:
         job = Job(id=digest, status="error", progress=0.0)
         job.error = (
             "Stem separation is not installed. This copy was set up without it, "
-            "which keeps the install about 900 MB smaller. To add it, run "
+            "which keeps the install about 650 MB smaller. To add it, run "
             "`uv sync --extra stems` in services/worker and restart the worker."
         )
         with _jobs_lock:

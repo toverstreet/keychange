@@ -38,10 +38,16 @@ back.
 Then, in this folder: the app's JavaScript packages, a Python environment, and the
 app bundle.
 
-**With stem separation:** about 1 GB and a few minutes, because it downloads
-PyTorch.
-**Without:** about 100 MB. Everything else still works — key and BPM detection,
-pitch, speed, looping, EQ, reverb and export. You can add separation later with:
+Measured on an Apple Silicon Mac:
+
+| | on disk | |
+|---|---|---|
+| **With stem separation** | about 1.9 GB | downloads PyTorch; a few minutes |
+| **Without** | about 0.9 GB | everything else still works |
+
+Without separation you still get key and BPM detection, pitch, speed, looping, EQ,
+reverb and export — only splitting a song into vocals and backing is missing. You
+can add it later with:
 
 ```
 cd services/worker && uv sync --extra stems

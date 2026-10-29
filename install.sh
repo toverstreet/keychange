@@ -30,8 +30,8 @@ say "${DIM}separate vocals, and export. Nothing is uploaded anywhere.${OFF}"
 [ "$(uname -s)" = "Darwin" ] || fail "This installer is for macOS."
 
 # --- what do they want installed ---------------------------------------
-# Asked first, because it is the difference between a ~100 MB install and a
-# ~1 GB one and nobody wants to discover that halfway through a download.
+# Asked first, because it is the difference between a 0.9 GB install and a
+# 1.9 GB one, and nobody wants to discover that halfway through a download.
 STEMS=""
 if [ "${1:-}" = "--with-stems" ]; then STEMS=yes; fi
 if [ "${1:-}" = "--no-stems" ];   then STEMS=no;  fi
@@ -39,8 +39,8 @@ if [ "${1:-}" = "--no-stems" ];   then STEMS=no;  fi
 if [ -z "$STEMS" ]; then
     say ""
     say "Stem separation (splitting a song into vocals and backing) is optional."
-    say "  ${BOLD}with${OFF}    about 1 GB, downloads PyTorch, and needs a few minutes"
-    say "  ${BOLD}without${OFF} about 100 MB — everything else still works:"
+    say "  ${BOLD}with${OFF}    about 1.9 GB on disk — downloads PyTorch, takes a few minutes"
+    say "  ${BOLD}without${OFF} about 0.9 GB — everything else still works:"
     say "          ${DIM}key and BPM, pitch, speed, looping, EQ, reverb, export${OFF}"
     say ""
     printf 'Install stem separation? [y/N] '

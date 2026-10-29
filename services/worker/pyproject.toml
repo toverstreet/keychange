@@ -12,10 +12,10 @@ dependencies = [
     "uvicorn>=0.54.0",
 ]
 
-# Stem separation is optional because it is almost all of the install.
-# torch alone is 565 MB of a 969 MB environment, against roughly 100 MB for
-# everything else. Analysis, pitch, speed, looping and export do not touch it,
-# so an install that skips it still gets the whole practice workflow.
+# Stem separation is optional because it is most of the install. Measured:
+# the environment is 329 MB without it and 989 MB with -- torch alone is
+# 565 MB. Analysis, pitch, speed, looping and export do not touch it, so an
+# install that skips it still gets the whole practice workflow.
 #   uv sync                 analysis only
 #   uv sync --extra stems   adds Demucs separation
 [project.optional-dependencies]
