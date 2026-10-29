@@ -49,14 +49,16 @@ if [ -z "$STEMS" ]; then
     # Ctrl-D -- would otherwise abort the whole install on an unbound
     # variable rather than taking the default.
     answer=""
-    # Tested by opening it, not with `[ -r /dev/tty ]`: that checks
-    # permissions and passes even with no controlling terminal, where the
-    # open then fails and leaks "Device not configured" to the screen.
+    # Probed by opening it inside a subshell, not with `[ -r /dev/tty ]`:
+    # that checks permissions and passes even with no controlling terminal,
+    # where the open then fails and leaks "Device not configured" to the
+    # screen. The subshell is what makes it quiet -- redirections are applied
+    # left to right, so a `2>/dev/null` sitting after the failing redirect is
+    # set up too late to silence it.
     # Reading from the terminal rather than stdin is what lets a
     # double-clicked .command collect the answer at all.
-    if exec 3</dev/tty 2>/dev/null; then
-        read -r answer <&3 || answer=""
-        exec 3<&-
+    if ( exec </dev/tty ) 2>/dev/null; then
+        read -r answer </dev/tty || answer=""
     else
         read -r answer || answer=""
     fi
