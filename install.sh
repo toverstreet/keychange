@@ -115,7 +115,12 @@ step "Building KeyChange.app"
 # --- install it ---------------------------------------------------------
 APP="$HERE/desktop/KeyChange.app"
 step "Finishing up"
-if [ -w /Applications ]; then
+# KEYCHANGE_NO_APPLICATIONS=1 keeps the app in this folder. Useful when trying
+# a copy out without disturbing one already installed.
+if [ -n "${KEYCHANGE_NO_APPLICATIONS:-}" ]; then
+    say "  leaving the app in place (KEYCHANGE_NO_APPLICATIONS is set)"
+    INSTALLED="$APP"
+elif [ -w /Applications ]; then
     rm -rf "/Applications/KeyChange.app"
     # Copied rather than symlinked: a symlink into a Downloads folder breaks
     # the first time the folder is tidied up, and the app is small.
