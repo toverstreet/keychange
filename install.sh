@@ -44,7 +44,18 @@ if [ -z "$STEMS" ]; then
     say "          ${DIM}key and BPM, pitch, speed, looping, EQ, reverb, export${OFF}"
     say ""
     printf 'Install stem separation? [y/N] '
-    read -r answer </dev/tty
+    # Initialised first, and every read guarded: `set -u` is in effect, so a
+    # read that does not run -- no terminal attached, or the user pressing
+    # Ctrl-D -- would otherwise abort the whole install on an unbound
+    # variable rather than taking the default.
+    answer=""
+    if [ -r /dev/tty ]; then
+        # Read from the terminal rather than stdin, so a double-clicked
+        # .command still gets the answer.
+        read -r answer </dev/tty || answer=""
+    else
+        read -r answer || answer=""
+    fi
     case "$answer" in [Yy]*) STEMS=yes ;; *) STEMS=no ;; esac
 fi
 say ""
