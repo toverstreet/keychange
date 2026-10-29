@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from keypitch_worker.main import app
+from keychange_worker.main import app
 
 client = TestClient(app)
 

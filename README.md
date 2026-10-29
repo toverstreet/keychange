@@ -1,4 +1,4 @@
-# KeyPitch
+# KeyChange
 
 A local clone of [keypitch.app](https://keypitch.app). Load an audio file, read its
 key / BPM / pitch, shift pitch and speed independently, loop a section snapped to the

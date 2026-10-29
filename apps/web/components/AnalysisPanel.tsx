@@ -1,6 +1,6 @@
 'use client'
 
-import { LOW_CONFIDENCE_THRESHOLD, type AnalysisResult } from '@keypitch/contract'
+import { LOW_CONFIDENCE_THRESHOLD, type AnalysisResult } from '@keychange/contract'
 import { Panel } from './Panel'
 
 export type AnalysisState =

@@ -67,7 +67,7 @@ describe('params', () => {
     }
   })
 
-  it('defines the three keypitch style presets', () => {
+  it('defines the three keychange style presets', () => {
     expect(Object.keys(STYLE_PRESETS).sort()).toEqual(['garage', 'slowReverb', 'speedUp'])
     expect(STYLE_PRESETS.speedUp.speed).toBeGreaterThan(1)
     expect(STYLE_PRESETS.slowReverb.speed).toBeLessThan(1)

@@ -10,8 +10,8 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from keypitch_worker import separate as separation
-from keypitch_worker.main import app
+from keychange_worker import separate as separation
+from keychange_worker.main import app
 
 client = TestClient(app)
 
@@ -27,7 +27,7 @@ def clean_registry():
 def stub_run(monkeypatch):
     """Replace the Demucs run with one that writes two stub stems."""
     def fake_run(job, digest, source):
-        from keypitch_worker import cache
+        from keychange_worker import cache
         out = cache.cache_dir(digest)
         for name in separation.STEM_FILES.values():
             (out / name).write_bytes(b"RIFF....WAVEstub")

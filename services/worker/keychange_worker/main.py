@@ -12,7 +12,7 @@ from . import cache, separate as separation
 from .analyze import ANALYSIS_SR, analyze_array
 from .audio_io import DecodeError, decode_to_array, decode_to_wav, probe
 
-app = FastAPI(title="keypitch-worker", version="0.1.0")
+app = FastAPI(title="keychange-worker", version="0.1.0")
 
 # The frontend is a separate origin in development and may be a hosted origin
 # later. This worker only ever handles audio the user themselves submitted.

@@ -1,5 +1,5 @@
 {
-  "name": "keypitch",
+  "name": "keychange",
   "private": true,
   "version": "0.1.0",
   "workspaces": [
@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm run dev -w web",
     "test": "npm test --workspaces --if-present",
-    "worker": "cd services/worker && uv run uvicorn keypitch_worker.main:app --port 8008 --reload"
+    "worker": "cd services/worker && uv run uvicorn keychange_worker.main:app --port 8008 --reload"
   },
   "devDependencies": {
     "soundtouchjs": "^0.3.0"

@@ -7,7 +7,7 @@ file's output.
 import numpy as np
 import pytest
 
-from keypitch_worker.analyze import analyze_array, detect_key
+from keychange_worker.analyze import analyze_array, detect_key
 
 SR = 22050
 

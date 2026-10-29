@@ -1,4 +1,4 @@
-import { DEFAULT_PARAMS, type Params } from '@keypitch/contract'
+import { DEFAULT_PARAMS, type Params } from '@keychange/contract'
 import { reanchorForSpeedChange, sourcePositionAt, stretchedOffset, type Anchor } from './clock'
 import { applyParams, buildEffectChain, disposeChain, type EffectChain } from './effect-chain'
 import { writeChannel } from './samples'

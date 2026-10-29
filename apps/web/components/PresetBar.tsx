@@ -1,6 +1,6 @@
 'use client'
 
-import { DEFAULT_PARAMS, STYLE_PRESETS, STYLE_PRESET_LABELS, type Params } from '@keypitch/contract'
+import { DEFAULT_PARAMS, STYLE_PRESETS, STYLE_PRESET_LABELS, type Params } from '@keychange/contract'
 import { Panel } from './Panel'
 
 export function PresetBar({

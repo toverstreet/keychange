@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DEFAULT_PARAMS, type AnalysisResult, type Params } from '@keypitch/contract'
+import { DEFAULT_PARAMS, type AnalysisResult, type Params } from '@keychange/contract'
 import { AudioEngine } from '@/lib/audio/engine'
 import { computePeaks } from '@/lib/audio/peaks'
 import { DecodeError, decodeFile } from '@/lib/audio/decode'
@@ -22,6 +22,7 @@ import { ReverbPanel } from '@/components/ReverbPanel'
 import { StemsPanel, type StemsState } from '@/components/StemsPanel'
 import { Transport } from '@/components/Transport'
 import { Waveform } from '@/components/Waveform'
+import { PoweredBy } from '@/components/PoweredBy'
 import { formatBytes } from '@/lib/format'
 
 export default function Page() {
@@ -303,7 +304,7 @@ export default function Page() {
               lineHeight: 1,
             }}
           >
-            Key<span style={{ color: 'var(--amber)' }}>Pitch</span>
+            Key<span style={{ color: 'var(--amber)' }}>Change</span>
           </h1>
           <p className="legend" style={{ marginTop: 8 }}>
             Local audio studio · nothing leaves this machine
@@ -331,7 +332,7 @@ export default function Page() {
   )
 
   return (
-    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 80px' }}>
+    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 48px' }}>
       {header}
 
       {!file ? (
@@ -408,6 +409,8 @@ export default function Page() {
           </div>
         </div>
       )}
+
+      <PoweredBy />
     </main>
   )
 }

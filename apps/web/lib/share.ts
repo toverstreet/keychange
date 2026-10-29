@@ -1,4 +1,4 @@
-import { clampParams, DEFAULT_PARAMS, paramsSchema, type Params } from '@keypitch/contract'
+import { clampParams, DEFAULT_PARAMS, paramsSchema, type Params } from '@keychange/contract'
 
 /**
  * Shareable settings links.

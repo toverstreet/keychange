@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { DEFAULT_PARAMS, TONE_PRESETS, type Params } from '@keypitch/contract'
+import { DEFAULT_PARAMS, TONE_PRESETS, type Params } from '@keychange/contract'
 import { AudioEngine } from '../lib/audio/engine'
 import { makeOfflineContext, bufferFrom, SR } from './helpers/offline'
 import { sine } from './helpers/dsp'

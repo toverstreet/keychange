@@ -1,6 +1,6 @@
 'use client'
 
-import { EQ_BANDS, PARAM_RANGES, TONE_PRESETS, type Params } from '@keypitch/contract'
+import { EQ_BANDS, PARAM_RANGES, TONE_PRESETS, type Params } from '@keychange/contract'
 import { Panel } from './Panel'
 
 const PRESET_LABELS: Record<string, string> = {

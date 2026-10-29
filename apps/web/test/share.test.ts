@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_PARAMS, STYLE_PRESETS, TONE_PRESETS, type Params } from '@keypitch/contract'
+import { DEFAULT_PARAMS, STYLE_PRESETS, TONE_PRESETS, type Params } from '@keychange/contract'
 import { decodeParams, encodeParams, paramsFromHash, shareUrl } from '../lib/share'
 
 const sets: Record<string, Params> = {

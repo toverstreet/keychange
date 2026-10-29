@@ -18,7 +18,7 @@ const azeret = Azeret_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'KeyPitch — local audio studio',
+  title: 'KeyChange — local audio studio',
   description: 'Analyse key and BPM, shift pitch and speed, loop, separate stems and export. Runs locally.',
 }
 

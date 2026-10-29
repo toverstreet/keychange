@@ -1,4 +1,4 @@
-import type { Params } from '@keypitch/contract'
+import type { Params } from '@keychange/contract'
 import { buildEffectChain } from './effect-chain'
 import { stretchChannels, stretchedLength } from './stretch'
 import { writeChannel } from './samples'
@@ -82,5 +82,5 @@ export function exportFilename(originalName: string, params: Params, ext: 'wav' 
   if (params.reverbMix > 0) bits.push('reverb')
   if (params.eightD) bits.push('8d')
   const prefix = bits.length ? `${bits.join(' ')}-` : ''
-  return `${prefix}${base}-keypitch.${ext}`
+  return `${prefix}${base}-keychange.${ext}`
 }

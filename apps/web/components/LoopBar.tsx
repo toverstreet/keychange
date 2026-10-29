@@ -1,6 +1,6 @@
 'use client'
 
-import type { Params } from '@keypitch/contract'
+import type { Params } from '@keychange/contract'
 import { formatTime } from '@/lib/format'
 import { Panel } from './Panel'
 import { barLines } from '@/lib/audio/snap'

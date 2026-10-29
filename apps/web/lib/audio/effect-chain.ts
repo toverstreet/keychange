@@ -1,4 +1,4 @@
-import { EQ_BANDS, type Params } from '@keypitch/contract'
+import { EQ_BANDS, type Params } from '@keychange/contract'
 import { generateImpulse } from './impulse'
 
 /**

@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "keypitch-web",
+      "name": "keychange-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "-w", "web"],
       "port": 3000

@@ -3,7 +3,7 @@ import {
   separationJobSchema,
   type AnalysisResult,
   type SeparationJob,
-} from '@keypitch/contract'
+} from '@keychange/contract'
 
 /**
  * The only module in the frontend that knows the worker exists.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_PARAMS, TONE_PRESETS, type Params } from '@keypitch/contract'
+import { DEFAULT_PARAMS, TONE_PRESETS, type Params } from '@keychange/contract'
 import { OfflineAudioContext } from 'node-web-audio-api'
 import { renderToBuffer, exportFilename } from '../lib/audio/render'
 import { encodeWav } from '../lib/audio/wav'
@@ -195,12 +195,12 @@ describe('encodeWav', () => {
 describe('exportFilename', () => {
   it('names a whole-step drop the way the reference file is named', () => {
     expect(exportFilename("Won't get fooled again 135bpm.m4a", p({ pitchSemitones: -2 }), 'mp3')).toBe(
-      "pitchdown a wholestep-Won't get fooled again 135bpm-keypitch.mp3",
+      "pitchdown a wholestep-Won't get fooled again 135bpm-keychange.mp3",
     )
   })
 
   it('labels a half step', () => {
-    expect(exportFilename('song.wav', p({ pitchSemitones: 1 }), 'wav')).toBe('pitchup a halfstep-song-keypitch.wav')
+    expect(exportFilename('song.wav', p({ pitchSemitones: 1 }), 'wav')).toBe('pitchup a halfstep-song-keychange.wav')
   })
 
   it('includes speed and effects', () => {
@@ -211,6 +211,6 @@ describe('exportFilename', () => {
   })
 
   it('has no prefix at default settings', () => {
-    expect(exportFilename('song.mp3', p({}), 'wav')).toBe('song-keypitch.wav')
+    expect(exportFilename('song.mp3', p({}), 'wav')).toBe('song-keychange.wav')
   })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { PARAM_RANGES, type Params } from '@keypitch/contract'
+import { PARAM_RANGES, type Params } from '@keychange/contract'
 import { Panel } from './Panel'
 
 export function ReverbPanel({

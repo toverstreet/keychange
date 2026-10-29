@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_PARAMS, EQ_BANDS, TONE_PRESETS, type Params } from '@keypitch/contract'
+import { DEFAULT_PARAMS, EQ_BANDS, TONE_PRESETS, type Params } from '@keychange/contract'
 import { buildEffectChain } from '../lib/audio/effect-chain'
 import { generateImpulse } from '../lib/audio/impulse'
 import { makeOfflineContext, bufferFrom, SR } from './helpers/offline'
