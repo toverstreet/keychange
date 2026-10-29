@@ -11,10 +11,11 @@ import { encodeMp3 } from '@/lib/audio/mp3'
 import { barLines, snapToGrid } from '@/lib/audio/snap'
 import { analyze, WorkerRejectedFileError, WorkerUnreachableError } from '@/lib/worker-client'
 import { paramsFromHash, shareUrl } from '@/lib/share'
+import { clampView, fitRegion, followPlayhead, spanOf, zoomAt, type View } from '@/lib/audio/viewport'
 import { AnalysisPanel, type AnalysisState } from '@/components/AnalysisPanel'
 import { Dropzone } from '@/components/Dropzone'
 import { EqPanel } from '@/components/EqPanel'
-import { ExportPanel, type ExportState } from '@/components/ExportPanel'
+import { ExportPanel, type ExportScope, type ExportState } from '@/components/ExportPanel'
 import { LoopBar } from '@/components/LoopBar'
 import { PitchSpeed } from '@/components/PitchSpeed'
 import { PresetBar } from '@/components/PresetBar'
@@ -22,6 +23,7 @@ import { ReverbPanel } from '@/components/ReverbPanel'
 import { StemsPanel, type StemsState } from '@/components/StemsPanel'
 import { Transport } from '@/components/Transport'
 import { Waveform } from '@/components/Waveform'
+import { ZoomBar } from '@/components/ZoomBar'
 import { PoweredBy } from '@/components/PoweredBy'
 import { formatBytes } from '@/lib/format'
 
@@ -45,6 +47,9 @@ export default function Page() {
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle')
 
   const [rateConfirmed, setRateConfirmed] = useState(true)
+  const [view, setView] = useState<View>({ start: 0, end: 0 })
+  const [exportScope, setExportScope] = useState<ExportScope>('loop')
+  const [followPlay, setFollowPlay] = useState(true)
 
   const engineRef = useRef<AudioEngine | null>(null)
   const sourceRef = useRef<AudioBuffer | null>(null)
@@ -83,7 +88,7 @@ export default function Page() {
       sourceRef.current = buffer
       setFile(f)
       setDuration(buffer.duration)
-      setPeaks(computePeaks(buffer))
+      setView({ start: 0, end: buffer.duration })
       setRateConfirmed(confirmed)
 
       const engine = new AudioEngine(buffer, undefined, params)
@@ -128,19 +133,33 @@ export default function Page() {
     }
   }, [file])
 
+  // Peaks follow the visible window, which is what makes zooming reveal real
+  // detail rather than magnifying the same buckets.
+  useEffect(() => {
+    const buffer = sourceRef.current
+    if (!buffer || spanOf(view) <= 0) return
+    setPeaks(computePeaks(buffer, undefined, view.start, view.end))
+  }, [view])
+
   // --- playhead ---------------------------------------------------------
 
   useEffect(() => {
     const tick = () => {
       const engine = engineRef.current
-      if (engine) setPosition(engine.positionSec)
+      if (engine) {
+        const pos = engine.positionSec
+        setPosition(pos)
+        if (engine.state().playing) {
+          setView((v) => (followPlay && spanOf(v) > 0 ? followPlayhead(v, pos, engine.durationSec) : v))
+        }
+      }
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [])
+  }, [followPlay])
 
   useEffect(() => () => engineRef.current?.dispose(), [])
 
@@ -184,6 +203,22 @@ export default function Page() {
     [beatGrid, beatsPerBar, position, update],
   )
 
+  // --- zoom -------------------------------------------------------------
+
+  const zoom = useCallback(
+    (factor: number, anchorSec: number) => setView((v) => zoomAt(v, factor, anchorSec, duration)),
+    [duration],
+  )
+  const pan = useCallback(
+    (deltaSec: number) =>
+      setView((v) => clampView({ start: v.start + deltaSec, end: v.end + deltaSec }, duration)),
+    [duration],
+  )
+  const fitLoop = useCallback(() => {
+    if (params.loop) setView(fitRegion(params.loop.a, params.loop.b, duration))
+  }, [params.loop, duration])
+  const fitAll = useCallback(() => setView({ start: 0, end: duration }), [duration])
+
   // --- transport --------------------------------------------------------
 
   const toggle = useCallback(() => void engineRef.current?.toggle(), [])
@@ -214,19 +249,27 @@ export default function Page() {
       const source = sourceRef.current
       if (!source || !file) return
 
+      const region = exportScope === 'loop' && params.loop ? params.loop : null
+
       setExportState({ kind: 'working', label: 'Stretching…', progress: 0 })
       try {
         // Yield once so the progress bar paints before the main-thread render
         // begins, rather than appearing only after it finishes.
         await new Promise((r) => setTimeout(r, 30))
 
-        const rendered = await renderToBuffer(source, params, (f, stage) => {
-          setExportState({
-            kind: 'working',
-            label: stage === 'stretch' ? 'Stretching…' : 'Applying effects…',
-            progress: f * 0.85,
-          })
-        })
+        const rendered = await renderToBuffer(
+          source,
+          params,
+          (f, stage) => {
+            setExportState({
+              kind: 'working',
+              label: stage === 'stretch' ? 'Stretching…' : 'Applying effects…',
+              progress: f * 0.85,
+            })
+          },
+          undefined,
+          region,
+        )
 
         setExportState({ kind: 'working', label: `Encoding ${format.toUpperCase()}…`, progress: 0.88 })
         await new Promise((r) => setTimeout(r, 30))
@@ -239,7 +282,7 @@ export default function Page() {
                 // the tab is busy.
                 setExportState({ kind: 'working', label: 'Encoding MP3…', progress: 0.88 + f * 0.12 }),
               )
-        const filename = exportFilename(file.name, params, format)
+        const filename = exportFilename(file.name, params, format, region)
         const blob = new Blob([bytes as unknown as BlobPart], {
           type: format === 'wav' ? 'audio/wav' : 'audio/mpeg',
         })
@@ -255,7 +298,7 @@ export default function Page() {
         setExportState({ kind: 'error', message: err instanceof Error ? err.message : 'Export failed.' })
       }
     },
-    [file, params],
+    [file, params, exportScope],
   )
 
   // --- sharing ----------------------------------------------------------
@@ -342,6 +385,7 @@ export default function Page() {
           <section className="rack p-4 rise">
             <Waveform
               peaks={peaks}
+              view={view}
               durationSec={duration}
               positionSec={position}
               loop={params.loop}
@@ -350,6 +394,18 @@ export default function Page() {
               showBars={snapBars}
               onScrub={seek}
               onSetLoopPoint={setLoopPoint}
+              onZoom={zoom}
+              onPan={pan}
+            />
+            <ZoomBar
+              view={view}
+              duration={duration}
+              hasLoop={!!params.loop}
+              following={followPlay}
+              onZoom={(f) => zoom(f, position)}
+              onFitLoop={fitLoop}
+              onFitAll={fitAll}
+              onToggleFollow={() => setFollowPlay((v) => !v)}
             />
             <div className="mt-4">
               <Transport
@@ -379,7 +435,15 @@ export default function Page() {
             onLoopBars={loopBarsFromHere}
             disabled={!ready}
           />
-          <ExportPanel state={exportState} onExport={runExport} disabled={!ready} />
+          <ExportPanel
+            state={exportState}
+            onExport={runExport}
+            disabled={!ready}
+            scope={exportScope}
+            onScope={setExportScope}
+            loopSeconds={params.loop ? params.loop.b - params.loop.a : null}
+            fullSeconds={duration}
+          />
           <EqPanel params={params} onChange={update} disabled={!ready} />
           <ReverbPanel params={params} onChange={update} disabled={!ready} />
           <PresetBar params={params} onChange={update} onShare={share} shareState={shareState} disabled={!ready} />

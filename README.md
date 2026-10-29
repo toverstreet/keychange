@@ -27,7 +27,7 @@ panels degrade, and they say so inline.
 ## Tests
 
 ```bash
-npm test                                   # 143 tests across the web app and contract
+npm test                                   # 198 tests across the web app and contract
 cd services/worker && uv run pytest        # 30 tests
 ```
 
@@ -49,6 +49,20 @@ services/worker/   FastAPI — /analyze, /separate
 `apps/web/lib/worker-client.ts` is the only file in the frontend that knows the worker
 exists, and it validates every response against the shared schemas. To point at a hosted
 GPU worker instead, set `NEXT_PUBLIC_WORKER_URL`. Nothing else changes.
+
+## Practice and clip workflow
+
+Loop points snap to the analysed beat grid, and the waveform zooms: scroll to zoom about
+the pointer, Cmd-drag to pan, **Fit loop** to frame the current loop, **Follow** to keep
+the playhead in view. This matters more than it sounds — a whole 8.5-minute track across
+1600 buckets is 0.32 s per bucket against a 0.44 s beat, so bar lines are drawn but a bar
+is barely a pixel column wide. Zoomed to a four-bar loop it is 0.006 s per bucket.
+
+Export has a **Range** control whenever a loop is set: `Loop` or `Full track`, each showing
+its duration. It is never applied implicitly — exporting only the loop because one happens
+to be set would blindside anyone who left one behind from practising. Clip edges get a 5 ms
+fade, because a cut at an arbitrary sample clicks at both ends. A four-bar clip exports in
+about 0.3 s against 17.7 s for the full track, since the slice happens before the stretch.
 
 ## Decisions worth knowing before changing things
 
@@ -109,6 +123,8 @@ the source rate is not preserved, and the UI says so.
 | Separation | 48 s for the full track on MPS, 10.6× realtime |
 | 44.1 kHz file on a 48 kHz output device | decodes and exports at 44.1 kHz; the pre-fix path decoded it at 48 kHz |
 | 4-bar loop | 7.0 s against 7.1 s expected at 135.3 BPM |
+| 4-bar loop export | 7.13 s of audio in 0.3 s, 48 kHz, first and last samples at 0 |
+| Fit loop | view 8:29 -> 0:10, resolution 0.32 s -> 0.006 s per bucket |
 
 ## Not included
 

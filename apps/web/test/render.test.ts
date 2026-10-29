@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { DEFAULT_PARAMS, TONE_PRESETS, type Params } from '@keychange/contract'
 import { OfflineAudioContext } from 'node-web-audio-api'
-import { renderToBuffer, exportFilename } from '../lib/audio/render'
+import { renderToBuffer, exportFilename, sliceChannels, EDGE_FADE_SEC } from '../lib/audio/render'
 import { encodeWav } from '../lib/audio/wav'
 import { applyParams, buildEffectChain } from '../lib/audio/effect-chain'
 import { stretchChannels } from '../lib/audio/stretch'
@@ -192,6 +192,70 @@ describe('encodeWav', () => {
   })
 })
 
+describe('sliceChannels', () => {
+  it('extracts the requested span', () => {
+    const data = sine(440, 4, SR)
+    const [out] = sliceChannels([data], SR, { a: 1, b: 3 })
+    expect(out.length).toBe(SR * 2)
+  })
+
+  it('orders a reversed region rather than producing nothing', () => {
+    const [out] = sliceChannels([sine(440, 4, SR)], SR, { a: 3, b: 1 })
+    expect(out.length).toBe(SR * 2)
+  })
+
+  it('fades the edges so a clip does not click', () => {
+    // Constant full-scale input: without fades both ends would start at 1.0,
+    // which is a step discontinuity and an audible click at each end.
+    const flat = new Float32Array(SR * 2).fill(1)
+    const [out] = sliceChannels([flat], SR, { a: 0.5, b: 1.5 })
+    expect(out[0]).toBeCloseTo(0, 5)
+    expect(out[out.length - 1]).toBeCloseTo(0, 5)
+    // ...and the fade is short enough to be inaudible, leaving the body intact.
+    const fadeSamples = Math.floor(EDGE_FADE_SEC * SR)
+    expect(out[fadeSamples + 10]).toBeCloseTo(1, 5)
+    expect(rms(out)).toBeGreaterThan(0.99)
+  })
+
+  it('clamps a region that runs past the end', () => {
+    const [out] = sliceChannels([sine(440, 2, SR)], SR, { a: 1, b: 99 })
+    expect(out.length).toBe(SR)
+  })
+
+  it('keeps channels aligned', () => {
+    const out = sliceChannels([sine(440, 3, SR), sine(880, 3, SR)], SR, { a: 1, b: 2 })
+    expect(out[0].length).toBe(out[1].length)
+    expect(dominantFreq(out[0], SR)).toBeCloseTo(440, 0)
+    expect(dominantFreq(out[1], SR)).toBeCloseTo(880, 0)
+  })
+})
+
+describe('renderToBuffer with a region', () => {
+  it('renders only the region', async () => {
+    const src = sourceBuffer([sine(440, 8, SR), sine(440, 8, SR)])
+    const out = await renderToBuffer(src, p({}), undefined, factory, { a: 2, b: 5 })
+    expect(out.duration).toBeCloseTo(3, 1)
+  })
+
+  it('applies speed to the region, not to the whole track', async () => {
+    const src = sourceBuffer([sine(440, 8, SR), sine(440, 8, SR)])
+    const out = await renderToBuffer(src, p({ speed: 1.5 }), undefined, factory, { a: 2, b: 5 })
+    expect(out.duration).toBeCloseTo(3 / 1.5, 1)
+  })
+
+  it('still applies pitch within the region', async () => {
+    const src = sourceBuffer([sine(440, 8, SR), sine(440, 8, SR)])
+    const out = await renderToBuffer(src, p({ pitchSemitones: 2 }), undefined, factory, { a: 2, b: 6 })
+    expect(dominantFreq(out.getChannelData(0), SR)).toBeCloseTo(493.88, 0)
+  })
+
+  it('renders the whole track when no region is given', async () => {
+    const src = sourceBuffer([sine(440, 4, SR), sine(440, 4, SR)])
+    const out = await renderToBuffer(src, p({}), undefined, factory)
+    expect(out.duration).toBeCloseTo(4, 1)
+  })
+})
+
 describe('exportFilename', () => {
   it('names a whole-step drop the way the reference file is named', () => {
     expect(exportFilename("Won't get fooled again 135bpm.m4a", p({ pitchSemitones: -2 }), 'mp3')).toBe(
@@ -212,5 +276,20 @@ describe('exportFilename', () => {
 
   it('has no prefix at default settings', () => {
     expect(exportFilename('song.mp3', p({}), 'wav')).toBe('song-keychange.wav')
+  })
+
+  it('names the region so several loops from one track do not collide', () => {
+    const a = exportFilename('song.mp3', p({}), 'wav', { a: 12.4, b: 20.6 })
+    const b = exportFilename('song.mp3', p({}), 'wav', { a: 40, b: 48 })
+    expect(a).toBe('12s-21s-song-keychange.wav')
+    expect(b).toBe('40s-48s-song-keychange.wav')
+    expect(a).not.toBe(b)
+  })
+
+  it('combines a region with the other settings', () => {
+    const name = exportFilename('song.mp3', p({ pitchSemitones: -2, speed: 0.85 }), 'mp3', { a: 10, b: 18 })
+    expect(name).toContain('10s-18s')
+    expect(name).toContain('pitchdown a wholestep')
+    expect(name).toContain('0.85x')
   })
 })

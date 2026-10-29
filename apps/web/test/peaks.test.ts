@@ -47,3 +47,54 @@ describe('computePeaks', () => {
     expect(PEAK_BUCKETS).toBeGreaterThan(200)
   })
 })
+
+describe('computePeaks over a range', () => {
+  const SR = 48000
+
+  it('reads only the requested window', () => {
+    // A spike at 1.5 s must be visible when that second is in range and absent
+    // when it is not -- this is the whole basis of zooming showing new detail.
+    const buf = makeBuffer({
+      length: SR * 3,
+      channels: 1,
+      sampleRate: SR,
+      fill: (i) => (i === Math.floor(SR * 1.5) ? 1 : 0),
+    })
+    const inRange = computePeaks(buf, 50, 1.0, 2.0)
+    const outOfRange = computePeaks(buf, 50, 2.0, 3.0)
+    expect(Math.max(...inRange)).toBeCloseTo(1, 5)
+    expect(Math.max(...outOfRange)).toBe(0)
+  })
+
+  it('resolves detail a full-track view would average away', () => {
+    // Two spikes 10 ms apart. Across the whole 3 s at 50 buckets they land in
+    // one bucket; across a 100 ms window they are clearly separate.
+    const a = Math.floor(SR * 1.5)
+    const b = a + Math.floor(SR * 0.01)
+    const buf = makeBuffer({
+      length: SR * 3,
+      channels: 1,
+      sampleRate: SR,
+      fill: (i) => (i === a || i === b ? 1 : 0),
+    })
+    const occupied = (peaks: Float32Array) => {
+      let n = 0
+      for (let i = 0; i < peaks.length / 2; i++) if (peaks[i * 2 + 1] > 0.5) n++
+      return n
+    }
+    expect(occupied(computePeaks(buf, 50))).toBe(1)
+    expect(occupied(computePeaks(buf, 50, 1.45, 1.55))).toBe(2)
+  })
+
+  it('defaults to the whole buffer', () => {
+    const buf = makeBuffer({ length: 1000, channels: 1, sampleRate: SR, fill: (i) => Math.sin(i / 10) })
+    expect(Array.from(computePeaks(buf, 20))).toEqual(Array.from(computePeaks(buf, 20, 0)))
+  })
+
+  it('clamps a range that runs past the end', () => {
+    const buf = makeBuffer({ length: SR, channels: 1, sampleRate: SR, fill: () => 0.5 })
+    const peaks = computePeaks(buf, 20, 0.5, 99)
+    expect(peaks.every((v) => Number.isFinite(v))).toBe(true)
+    expect(Math.max(...peaks)).toBeCloseTo(0.5, 5)
+  })
+})
