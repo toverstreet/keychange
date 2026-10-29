@@ -174,7 +174,7 @@ Lyrics display. Everything else keypitch.app does is here.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE). Built by [Mule AI](https://www.muleai.ai).
+MIT — see [LICENSE](LICENSE). Copyright © 2026 Mule AI LLC. Built by [Mule AI](https://www.muleai.ai).
 
 Dependencies are not redistributed here: npm and PyPI fetch them on your machine when
 you install, and ffmpeg comes from your own Homebrew. They carry their own licences,
