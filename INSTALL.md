@@ -7,21 +7,25 @@ never leaves the machine.
 
 ## Install
 
-1. Unzip this folder somewhere you intend to keep it — your home folder or
+1. Unzip the download somewhere you intend to keep it — your home folder or
    Documents is ideal. **Not** Downloads, which gets tidied up.
-2. Open **Terminal** (Spotlight: ⌘-Space, type "Terminal").
-3. Drag the unzipped folder onto the Terminal window after typing `cd ` — so the
-   line reads something like `cd /Users/you/KeyChange` — and press Return.
-4. Type this and press Return:
-
-   ```
-   ./install.sh
-   ```
-
-It asks one question — whether to include stem separation — then does the rest.
+2. Open the folder and double-click **Install KeyChange**.
+3. macOS will probably say it is from an unidentified developer. That is
+   expected for anything not sold through the App Store. **Right-click** the
+   file instead, choose **Open**, then **Open** again in the dialog. You only
+   have to do this once.
+4. A Terminal window appears and does the work. It asks one question — whether
+   to include stem separation — then runs to the end.
 
 When it finishes, KeyChange is in your Applications folder. Open it from
 Launchpad and drag it to your Dock.
+
+### If you prefer the terminal
+
+```
+cd /path/to/KeyChange
+./install.sh
+```
 
 ## What it installs
 

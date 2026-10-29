@@ -32,10 +32,11 @@ git archive --format=tar HEAD | (mkdir -p "$STAGE/$NAME" && tar -x -C "$STAGE/$N
 cp services/worker/uv.lock "$STAGE/$NAME/services/worker/uv.lock"
 
 # Sanity: the three things the recipient runs must be present and executable.
-for required in install.sh desktop/build_app.sh desktop/stop.sh INSTALL.md; do
+for required in install.sh "Install KeyChange.command" desktop/build_app.sh desktop/stop.sh INSTALL.md; do
     [ -f "$STAGE/$NAME/$required" ] || { echo "missing from the archive: $required" >&2; exit 1; }
 done
-chmod +x "$STAGE/$NAME/install.sh" "$STAGE/$NAME/desktop/build_app.sh" "$STAGE/$NAME/desktop/stop.sh"
+chmod +x "$STAGE/$NAME/install.sh" "$STAGE/$NAME/Install KeyChange.command" \
+         "$STAGE/$NAME/desktop/build_app.sh" "$STAGE/$NAME/desktop/stop.sh"
 
 ZIP="$OUT/${NAME}.zip"
 rm -f "$ZIP"

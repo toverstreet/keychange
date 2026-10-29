@@ -9,6 +9,13 @@ rate is preserved through the whole pipeline.
 
 ## Getting it
 
+**Not a developer?** Download the latest zip from
+[Releases](https://github.com/toverstreet/keychange/releases/latest), unzip it, and
+double-click **Install KeyChange**. [INSTALL.md](INSTALL.md) walks through it, including
+the "unidentified developer" prompt macOS shows the first time.
+
+**Otherwise:**
+
 ```bash
 git clone https://github.com/toverstreet/keychange.git
 cd keychange
