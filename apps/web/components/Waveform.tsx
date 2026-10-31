@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
+import { isDrag } from '@/lib/audio/selection'
 import { barLines } from '@/lib/audio/snap'
 import { spanOf, type View } from '@/lib/audio/viewport'
 
@@ -25,6 +26,7 @@ export function Waveform({
   showBars,
   onScrub,
   onSetLoopPoint,
+  onSelectRegion,
   onZoom,
   onPan,
   height = 148,
@@ -40,6 +42,9 @@ export function Waveform({
   showBars: boolean
   onScrub: (sec: number) => void
   onSetLoopPoint?: (which: 'a' | 'b', sec: number) => void
+  /** Drag across the waveform to select a section. `bypassSnap` is the Alt key
+   *  held mid-drag, for a boundary that falls between beats. */
+  onSelectRegion?: (fromSec: number, toSec: number, bypassSnap: boolean) => void
   onZoom?: (factor: number, anchorSec: number) => void
   onPan?: (deltaSec: number) => void
   height?: number
@@ -49,6 +54,9 @@ export function Waveform({
   const staticLayer = useRef<HTMLCanvasElement | null>(null)
   const staticKey = useRef<string>('')
   const drag = useRef<{ x: number; startView: number } | null>(null)
+  // A plain press is ambiguous until it moves: a seek if it stays put, a
+  // selection once it travels. Held here and resolved on move or release.
+  const select = useRef<{ x: number; sec: number; moved: boolean } | null>(null)
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -243,9 +251,20 @@ export function Waveform({
           ;(e.target as Element).setPointerCapture?.(e.pointerId)
           return
         }
+        if (onSelectRegion) {
+          select.current = { x: e.clientX, sec, moved: false }
+          ;(e.target as Element).setPointerCapture?.(e.pointerId)
+          return
+        }
         onScrub(sec)
       }}
       onPointerMove={(e) => {
+        if (select.current && onSelectRegion) {
+          if (!select.current.moved && !isDrag(e.clientX - select.current.x)) return
+          select.current.moved = true
+          onSelectRegion(select.current.sec, secondsAt(e.clientX), e.altKey)
+          return
+        }
         if (!drag.current || !onPan) return
         const wrap = wrapRef.current
         if (!wrap) return
@@ -254,9 +273,14 @@ export function Waveform({
         drag.current = { ...drag.current, x: e.clientX }
       }}
       onPointerUp={() => {
+        // A press that never travelled is still a scrub, so the old behaviour
+        // survives the new gesture.
+        if (select.current && !select.current.moved) onScrub(select.current.sec)
+        select.current = null
         drag.current = null
       }}
       onPointerCancel={() => {
+        select.current = null
         drag.current = null
       }}
     >

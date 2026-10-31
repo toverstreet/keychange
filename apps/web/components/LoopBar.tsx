@@ -1,19 +1,22 @@
 'use client'
 
 import type { Params } from '@keychange/contract'
-import { formatTime } from '@/lib/format'
+import { formatSpan } from '@/lib/format'
 import { Panel } from './Panel'
 import { barLines } from '@/lib/audio/snap'
+import { snapLabel, type SnapMode } from '@/lib/audio/selection'
+import { TimeField } from './TimeField'
 
 export function LoopBar({
   params,
   position,
   duration,
   beatGrid,
-  snapBars,
+  snapMode,
   beatsPerBar,
   onChange,
-  onToggleSnapBars,
+  onCycleSnap,
+  onSetLoopEnd,
   onSetBeatsPerBar,
   onLoopBars,
   disabled,
@@ -22,10 +25,12 @@ export function LoopBar({
   position: number
   duration: number
   beatGrid: number[]
-  snapBars: boolean
+  snapMode: SnapMode
   beatsPerBar: number
   onChange: (p: Partial<Params>) => void
-  onToggleSnapBars: () => void
+  onCycleSnap: () => void
+  /** Set one end to an exact time, unsnapped. */
+  onSetLoopEnd: (which: 'a' | 'b', sec: number) => void
   onSetBeatsPerBar: (n: number) => void
   onLoopBars: (bars: number) => void
   disabled?: boolean
@@ -40,7 +45,7 @@ export function LoopBar({
       right={
         <div className="flex items-center gap-2">
           <span className={`lamp ${loop ? 'lamp-on' : ''}`} />
-          <span className="legend">{loop ? `${formatTime(loop.b - loop.a)} long` : 'off'}</span>
+          <span className="legend">{loop ? `${formatSpan(loop.b - loop.a)} long` : 'off'}</span>
         </div>
       }
     >
@@ -71,8 +76,13 @@ export function LoopBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button className={`btn ${snapBars ? 'btn-on' : ''}`} onClick={onToggleSnapBars} disabled={disabled || !hasGrid}>
-          Snap: {snapBars ? 'Bars' : 'Beats'}
+        <button
+          className={`btn ${snapMode !== 'off' ? 'btn-on' : ''}`}
+          onClick={onCycleSnap}
+          disabled={disabled || !hasGrid}
+          title="Off lets a selection start and end anywhere, not only on the grid"
+        >
+          Snap: {snapLabel(snapMode)}
         </button>
 
         <div className="flex items-center gap-1">
@@ -91,16 +101,23 @@ export function LoopBar({
         </div>
 
         {loop && (
-          <span className="readout" style={{ fontSize: 15 }}>
-            A {formatTime(loop.a)} → B {formatTime(loop.b)}
-          </span>
+          <div className="flex items-center gap-2">
+            <TimeField label="A" seconds={loop.a} onCommit={(sec) => onSetLoopEnd('a', sec)} disabled={disabled} />
+            <span style={{ color: 'var(--ink-faint)' }}>→</span>
+            <TimeField label="B" seconds={loop.b} onCommit={(sec) => onSetLoopEnd('b', sec)} disabled={disabled} />
+          </div>
         )}
       </div>
 
       <p style={{ color: 'var(--ink-faint)', fontSize: 13, marginTop: 12, lineHeight: 1.5 }}>
+        Drag across the waveform to select any section, of any length; the selection is the loop, and Export can
+        write just that section.{' '}
         {hasGrid
-          ? `Loop points snap to the ${bars} detected bars, so a loop starts on a downbeat instead of near one. Shift-click the waveform to set A, alt-click to set B.`
-          : 'Start the worker to snap loop points to the detected beat grid. Shift-click the waveform to set A, alt-click to set B.'}
+          ? snapMode === 'off'
+            ? `Snapping is off, so a boundary sits exactly where you put it. Turn it back on to land on the ${bars} detected bars.`
+            : `Ends snap to the ${bars} detected bars, so a loop starts on a downbeat instead of near one -- hold Alt while dragging, or set Snap to Off, to place one between beats.`
+          : 'Start the worker to snap loop ends to the detected beat grid.'}{' '}
+        Shift-click sets A, alt-click sets B, and the A/B fields take an exact time.
       </p>
     </Panel>
   )

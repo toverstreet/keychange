@@ -20,3 +20,16 @@ export function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
+
+/**
+ * A length of time, as a length rather than a position.
+ *
+ * `formatTime` floors to the second, which reads as "0:00" for anything under
+ * one -- fine for a playhead, wrong for a selection, now that a selection may
+ * be a fraction of a second long.
+ */
+export function formatSpan(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return '0:00'
+  if (sec < 10) return `${sec.toFixed(2)}s`
+  return formatTime(sec)
+}

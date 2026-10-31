@@ -1,8 +1,10 @@
 # KeyChange
 
 A local clone of [keypitch.app](https://keypitch.app). Load an audio file, read its
-key / BPM / pitch, shift pitch and speed independently, loop a section snapped to the
-beat, shape it with EQ and reverb, separate vocals from instrumental, and export.
+key / BPM / pitch, shift pitch and speed independently, drag out a section of any
+length to loop -- snapped to the beat or free of the grid entirely -- shape it with EQ
+and reverb, separate vocals from instrumental, and export the whole track or just the
+selected section.
 
 Nothing is uploaded anywhere. There is no size or duration cap, and the source sample
 rate is preserved through the whole pipeline.
@@ -76,7 +78,7 @@ panels degrade, and they say so inline.
 ## Tests
 
 ```bash
-npm test                                   # 198 tests across the web app and contract
+npm test                                   # 203 tests across the web app and contract
 cd services/worker && uv run pytest        # 30 tests
 ```
 

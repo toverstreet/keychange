@@ -249,6 +249,23 @@ describe('renderToBuffer with a region', () => {
     expect(dominantFreq(out.getChannelData(0), SR)).toBeCloseTo(493.88, 0)
   })
 
+  it('renders a region of any length, on or off the beat', async () => {
+    // The selection is free-form: it need not be a whole number of beats, and
+    // nothing in the export path may round it to one.
+    const src = sourceBuffer([sine(440, 8, SR), sine(440, 8, SR)])
+    for (const region of [{ a: 1.137, b: 1.429 }, { a: 0.02, b: 7.981 }]) {
+      const out = await renderToBuffer(src, p({}), undefined, factory, region)
+      expect(out.duration).toBeCloseTo(region.b - region.a, 2)
+    }
+  })
+
+  it('renders a region far shorter than a beat', async () => {
+    const src = sourceBuffer([sine(440, 8, SR), sine(440, 8, SR)])
+    const out = await renderToBuffer(src, p({}), undefined, factory, { a: 3, b: 3.02 })
+    expect(out.duration).toBeCloseTo(0.02, 2)
+    expect(out.length).toBeGreaterThan(0)
+  })
+
   it('renders the whole track when no region is given', async () => {
     const src = sourceBuffer([sine(440, 4, SR), sine(440, 4, SR)])
     const out = await renderToBuffer(src, p({}), undefined, factory)

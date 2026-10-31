@@ -8,7 +8,14 @@ import { DecodeError, decodeFile } from '@/lib/audio/decode'
 import { exportFilename, renderToBuffer } from '@/lib/audio/render'
 import { encodeWav } from '@/lib/audio/wav'
 import { encodeMp3 } from '@/lib/audio/mp3'
-import { barLines, snapToGrid } from '@/lib/audio/snap'
+import { barLines } from '@/lib/audio/snap'
+import {
+  nextSnapMode,
+  normalizeRegion,
+  regionFromDrag,
+  snapWithMode,
+  type SnapMode,
+} from '@/lib/audio/selection'
 import { analyze, health, WorkerRejectedFileError, WorkerUnreachableError } from '@/lib/worker-client'
 import { paramsFromHash, shareUrl } from '@/lib/share'
 import { clampView, fitRegion, followPlayhead, spanOf, zoomAt, type View } from '@/lib/audio/viewport'
@@ -42,7 +49,7 @@ export default function Page() {
   const [analysis, setAnalysis] = useState<AnalysisState>({ kind: 'idle' })
   const [exportState, setExportState] = useState<ExportState>({ kind: 'idle' })
   const [stems, setStems] = useState<StemsState>({ kind: 'idle' })
-  const [snapBars, setSnapBars] = useState(true)
+  const [snapMode, setSnapMode] = useState<SnapMode>('bars')
   const [beatsPerBar, setBeatsPerBar] = useState(4)
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle')
 
@@ -210,14 +217,34 @@ export default function Page() {
   }, [])
 
   const setLoopPoint = useCallback(
-    (which: 'a' | 'b', rawSeconds: number) => {
-      const snapped = snapToGrid(rawSeconds, beatGrid, { bars: snapBars, beatsPerBar })
+    (which: 'a' | 'b', rawSeconds: number, snap: SnapMode = snapMode) => {
+      const at = snapWithMode(rawSeconds, snap, beatGrid, beatsPerBar)
       const current = params.loop ?? { a: 0, b: duration }
-      const next = which === 'a' ? { a: snapped, b: current.b } : { a: current.a, b: snapped }
-      if (next.b <= next.a) return
-      update({ loop: next })
+      // Moving one end past the other re-orders them rather than refusing the
+      // edit, so dragging B back behind A selects the span you drew instead of
+      // doing nothing.
+      const next = normalizeRegion(
+        which === 'a' ? at : current.a,
+        which === 'a' ? current.b : at,
+        duration,
+      )
+      if (next) update({ loop: next })
     },
-    [beatGrid, snapBars, beatsPerBar, params.loop, duration, update],
+    [beatGrid, snapMode, beatsPerBar, params.loop, duration, update],
+  )
+
+  /** A drag across the waveform: one selection, of any length, which *is* the
+   *  loop. Alt held during the drag places the ends exactly. */
+  const selectRegion = useCallback(
+    (fromSec: number, toSec: number, bypassSnap: boolean) => {
+      const region = regionFromDrag(fromSec, toSec, duration, {
+        mode: bypassSnap ? 'off' : snapMode,
+        grid: beatGrid,
+        beatsPerBar,
+      })
+      if (region) update({ loop: region })
+    },
+    [beatGrid, snapMode, beatsPerBar, duration, update],
   )
 
   const loopBarsFromHere = useCallback(
@@ -428,9 +455,10 @@ export default function Page() {
               loop={params.loop}
               beatGrid={beatGrid}
               beatsPerBar={beatsPerBar}
-              showBars={snapBars}
+              showBars={snapMode === 'bars'}
               onScrub={seek}
               onSetLoopPoint={setLoopPoint}
+              onSelectRegion={selectRegion}
               onZoom={zoom}
               onPan={pan}
             />
@@ -464,10 +492,11 @@ export default function Page() {
             position={position}
             duration={duration}
             beatGrid={beatGrid}
-            snapBars={snapBars}
+            snapMode={snapMode}
             beatsPerBar={beatsPerBar}
             onChange={update}
-            onToggleSnapBars={() => setSnapBars((v) => !v)}
+            onCycleSnap={() => setSnapMode(nextSnapMode)}
+            onSetLoopEnd={(which, sec) => setLoopPoint(which, sec, 'off')}
             onSetBeatsPerBar={setBeatsPerBar}
             onLoopBars={loopBarsFromHere}
             disabled={!ready}
